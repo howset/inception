@@ -127,3 +127,17 @@ $> sudo addgroup [username] docker
 ```sh
 $> sudo apk add docker-cli-compose
 ```
+
+#### Setup a shared folder
+- Create a mount point and install libraries 
+```sh
+$> mkdir -p /mnt/shared
+$>apk add virtualbox-guest-additions linux-virt
+```
+- Reboot (setup shared folder in virtualbox gui if required as well)
+- Then mount the folder 
+```sh
+modprobe -a vboxsf 
+mount -t vboxsf vbox_shared /mnt/shared
+```
+- Change `vbox_shared` to whatever name specified in the virtualbox gui.
