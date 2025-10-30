@@ -82,4 +82,5 @@ $> mkdir ~/new
 $> sudo mount -t vboxsf New ~/new #New is the folder name in host, ~/new is shared folder in vm
 ```
 - To make it permanent, edit /etc/fstab and add the line `New /home/user/new vboxsf defaults 0 0`
+- The guest additions can be removed from drive once the shared folder has been tested to work properly.
 
