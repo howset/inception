@@ -28,7 +28,8 @@ processors 5
 
 ### Install OS
 - Follow graphical install
-- Use either gnome/xfce. Include debian DE.
+- Set hostname correctly.
+- Use either gnome/xfce. Include debian DE & ssh server.
 
 ### OS setup
 #### Install docker, docker compose, & docker-cli-compose
