@@ -6,6 +6,8 @@
 - https://github.com/vbachele/Inception
 - https://github.com/Xperaz/inception-42
 - https://medium.com/@imyzf/inception-3979046d90a0
+- https://github.com/facetint/Inception
+- https://github.com/cfareste/Inception
 
 ## VM setup & OS installation
 Reqs:
