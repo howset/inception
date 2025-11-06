@@ -9,6 +9,10 @@
 - https://github.com/facetint/Inception
 - https://github.com/cfareste/Inception
 
+### Useful sources
+- Not use prebuilt images (https://mariadb.com/docs/server/server-management/automated-mariadb-deployment-and-administration/docker-and-mariadb/creating-a-custom-container-image)
+- Alpine linux wiki (https://wiki.alpinelinux.org/wiki/Main_Page)
+
 ## VM setup & OS installation
 Reqs:
 1. virtualbox
