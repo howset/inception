@@ -1,0 +1,22 @@
+# Base image
+FROM debian:bookworm
+
+# Install MariaDB server
+RUN apt update && apt install -y\
+	mariadb-server\
+	mariadb-client
+
+# Initialization script
+COPY tools/mdb_init.sh /usr/local/bin/mdb_init.sh
+RUN chmod +x /usr/local/bin/mdb_init.sh
+
+# MariaDB config
+COPY conf/mdb.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
+RUN chmod u=rw,go=r /etc/mysql/mariadb.conf.d/50-server.cnf
+
+# Expose port (for WP connection)
+EXPOSE 3306
+
+# Use the init script as the container's entrypoint
+ENTRYPOINT ["/usr/local/bin/mdb_init.sh"]
+CMD ["mariadb"]
