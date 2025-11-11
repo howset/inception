@@ -94,7 +94,12 @@ Reqs:
 	$> reboot
 	```
 
-#### Install nano & ssh config
+#### Install make, nano & ssh config
+- Make may not be available in minimal distro
+	```sh
+	$> sudo apk update #just good practice 4 any distro
+	$> sudo apk add make
+	```
 - Install nano for common plebs like me.
 	```sh
 	$> sudo apk update #just good practice 4 any distro
@@ -121,13 +126,6 @@ Reqs:
 - Test from cluster terminal
 	```sh
 	$> ssh localhost -p 4243 #or ssh 127.0.0.1 -p 4243
-	```
-
-#### Install make
-- Make may not be available in minimal distro
-	```sh
-	$> sudo apk update #just good practice 4 any distro
-	$> sudo apk add make
 	```
 
 #### Install docker, docker compose, & docker-cli-compose
