@@ -129,10 +129,10 @@ Reqs:
 	```
 
 #### Install docker, docker compose, & docker-cli-compose
-- Get `docker` & `docker compose`
+- Get `docker`, `docker-cli-compose`, & `docker compose`
 	```sh
 	$> sudo apk update #just good practice 4 any distro
-	$> sudo apk add docker docker-compose
+	$> sudo apk add docker docker-cli-compose docker-compose
 	```
 - Update it
 	```sh
@@ -151,9 +151,13 @@ Reqs:
 	```sh
 	$> sudo adduser [username] docker
 	```
-- Now install the command line interface
+- Note: 
+	- `docker`: core Docker runtime (daemon and CLI)
+	- `docker-cli-compose`: compose plugin for Docker CLI
+	- `docker-compose`: deprecated Python-based Compose binary, included for compatibility reasons only.
+- Check docker installation (do this maybe after the VM is established)
 	```sh
-	$> sudo apk add docker-cli-compose
+	$> docker run hello-world
 	```
 
 #### Setup a Desktop Environment[^4]
@@ -170,7 +174,7 @@ Reqs:
 	$> sudo mkdir -p /mnt/shared
 	$> sudo apk add virtualbox-guest-additions linux-virt #install VirtualBox Guest Additions
 	```
-- Shutdown and setup shared folder in virtualbox gui.
+- Shutdown and setup shared folder in virtualbox gui (`Settings` -> `Shared Folders`).
 	```
 	- Folder path in host: /home/username/Shared
 	- Fodler name: Shared
@@ -235,10 +239,147 @@ Reqs:
 	text-shadow: 0px 1px 1px black; }
 	```
 
+#### Utilities: VSCode remote SSH, git, etc
+- Edit `/etc/ssh/sshd_config`
+- Uncomment/edit/add this lines 
+	```
+	AllowTcpForwarding yes #needed by VSC Remote ssh
+	PermitOpen any #just for flexibility
+	GatewayPorts no
+	```
+- Verify, save, and restart SSH
+	```sh
+	$> sudo rc-service sshd restart
+	$> sudo rc-service sshd status
+	```
+- Install git if necessary
+
 ## Docker containers
+- Useful but can be confusing commands:[^6]
+
+| Command			| Options	| Parameter			|Function			|
+|-------------------|-----------|-------------------|------------------|
+| docker ps 		| 			| 					| lists running containers |
+| docker ps 		| -a		| 					| lists all containers running or not |
+| docker images		| 			| 					| lists all images |
+| docker logs 		| 			| [ID]/[Name]		| show logs of a container |
+| docker rm 		| 			| [ID]/[Name]		| remove a container |
+| docker rmi		| 			| [ID]				| remove an image |
+| docker image prune| 			| 					| remove dangling images |
+| docker build 		| -t		| [Image_name]	.	| build an image [Image_name]:latest in current dir (.) |
+| docker build 		| --no-cache| [Image_name]	[Dir]| build it fresh from [Dir]|
+| docker create		| --name	| [Cont_name][Image_name]| create container [Cont_name] from image |
+| docker stop 		| 			| [ID]/[Name]		| stop a running container |
+| docker start 		| 			| [ID]/[Name]		| start a stopped container |
+| docker run 		| 			| [Image_name]		| create and start a container |
+| docker run 		| -d		| [ID]/[Name]		| detached |
+| docker run 		| --name	| [Cont_name] [Name]| specify name for the container |
+| docker run 		| -it		| [Cont_name] bash	| run a container interactive using pseudo-TTY |
+| docker run 		| -p 		| <host_port>:<container_port> <image_name> | run container & publish a port to the host|
+| docker exec 		| 			| [ID]/[Name]		| start a container |
+| docker restart	| 			| [ID]/[Name]		| restart a container |
+| docker exec 		| -it		| [Cont_name] bash	| execute -it on a running container using bash|
+
 ### Mariadb
+#### Dockerfile
+The base image can basically be from anything, either from debian:bookworm or alpine:3.21.1 as long as the kernel is the same, the difference is the size of the image using alpine ended up smaller than debian (~200 MB vs ~500 MB), and some adjustments also has to be made due to some differences between the systems (alpine has no bash by default).
+
+```docker
+# Base image
+FROM alpine:3.21.1
+
+# Install MariaDB
+RUN apt update && apt install -y \
+	mariadb \
+	mariadb-client \
+	bash
+
+# Initialization script
+COPY tools/mdb_init.sh /usr/local/bin/mdb_init.sh
+RUN chmod +x /usr/local/bin/mdb_init.sh
+
+# MariaDB config
+COPY conf/mdb.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
+RUN chmod u=rw,go=r /etc/mysql/mariadb.conf.d/50-server.cnf
+
+# Expose port (for WP connection)
+EXPOSE 3306
+
+# Use the init script as the container's entrypoint
+ENTRYPOINT ["/usr/local/bin/mdb_init.sh"]
+CMD ["mariadb"]
+```
+#### Entrypoint script
+apply_secure_fixes() == mysql_secure_installation[^7]
+
+```bash
+#!/bin/bash
+
+#exit immediately if any command fails, prevents the container from silently continuing if something breaks
+set -e
+
+start_mdb_bg()
+{
+	mkdir -p /run/mysqld #-p avoids errors if it already exists
+	#create database if not already done
+	if [ ! -d /var/lib/mysql/mysql ]; then
+		mariadb-install-db --user=mysql --datadir=/var/lib/mysql
+	fi
+	chown -R mysql:mysql /run/mysqld /var/lib/mysql #set mysql user and group
+	chmod u=rwx,g=,o= /run/mysqld #set permissions so only owner mysql can read/write/execute in dir to improve security.
+	mariadbd --user=mysql --datadir=/var/lib/mysql --skip-networking=0 --bind-address=0.0.0.0 & #mdb server daemon in bg, specify user, datadir, ensure networking is enabled, & allow any connection
+	sleep 5
+}
+
+#reproduce mysql_secure_installation noninteractively
+apply_secure_fixes()
+{
+	mariadb -e "DELETE FROM mysql.user WHERE User='';" #remove anon users
+	mariadb -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" #allow only only localhost/root access
+	mariadb -e "DROP DATABASE IF EXISTS test;" #remove default test db, unnecessary actually
+	mariadb -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" #Remove privileges related to it
+	mariadb -e "FLUSH PRIVILEGES;" #apply immediately
+}
+
+setup_db()
+{
+	local DATABASE_NAME=MDB_NAME666
+	local DATABASE_USER_NAME=MDB_USER666
+	local DATABASE_USER_PASSWORD=MDB_PASSWD666
+
+	mariadb -e "CREATE DATABASE IF NOT EXISTS $DATABASE_NAME;" #create db
+	mariadb -e "CREATE USER IF NOT EXISTS '$DATABASE_USER_NAME'@'%' IDENTIFIED BY '$DATABASE_USER_PASSWORD';" #adds new user with password, allowing connection from any host ('%')
+	mariadb -e "GRANT ALL ON $DATABASE_NAME.* TO '$DATABASE_USER_NAME'@'%';" #give full privilege to user
+	mariadb -e "FLUSH PRIVILEGES;"
+}
+
+start_mdb_bg
+apply_secure_fixes
+setup_db
+
+# stop temporary background server
+if pgrep mariadbd >/dev/null 2>&1; then #check if mdb is running
+	mysqladmin --user=root shutdown 2>/dev/null || pkill mariadbd #stop nicely or kill it
+	while pgrep mariadbd >/dev/null 2>&1; do sleep 0.1; done #waits until process fully exits
+fi
+
+# Start MariaDB server in the foreground (PID 1)
+exec mariadbd --user=mysql --datadir=/var/lib/mysql --bind-address=0.0.0.0
+```
+
+#### Configs
 ### Nginx
+#### Dockerfile
+
+#### Entrypoint script
+
+#### Configs
 ### Wordpress
+#### Dockerfile
+
+#### Entrypoint script
+
+#### Configs
 
 ## References
 [^1]: https://itsfoss.com/alpine-linux-virtualbox/
@@ -246,3 +387,5 @@ Reqs:
 [^3]: https://wiki.alpinelinux.org/wiki/Kernels
 [^4]: https://wiki.alpinelinux.org/wiki/Xfce
 [^5]: https://wiki.alpinelinux.org/wiki/VirtualBox_shared_folders
+[^6]: https://dockerlabs.collabnix.com/docker/cheatsheet/
+[^7]: https://dev.mysql.com/doc/refman/8.4/en/mysql-secure-installation.html
