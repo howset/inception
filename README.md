@@ -283,6 +283,7 @@ Reqs:
 ### Mariadb
 #### Dockerfile
 The base image can basically be from anything, either from debian:bookworm or alpine:3.21.1 as long as the kernel is the same, the difference is the size of the image using alpine ended up smaller than debian (~200 MB vs ~500 MB), and some adjustments also has to be made due to some differences between the systems (alpine has no bash by default).
+May not use a prebuilt image[^8]:.
 
 ```docker
 # Base image
@@ -389,3 +390,4 @@ exec mariadbd --user=mysql --datadir=/var/lib/mysql --bind-address=0.0.0.0
 [^5]: https://wiki.alpinelinux.org/wiki/VirtualBox_shared_folders
 [^6]: https://dockerlabs.collabnix.com/docker/cheatsheet/
 [^7]: https://dev.mysql.com/doc/refman/8.4/en/mysql-secure-installation.html
+[^8]: https://mariadb.com/docs/server/server-management/automated-mariadb-deployment-and-administration/docker-and-mariadb/creating-a-custom-container-image
