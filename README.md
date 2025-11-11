@@ -1,22 +1,32 @@
 # Inception
 
 ## Content
-- VM setup & OS installation
-	- Preparation
-	- Install OS
-	- OS setup, essential installations, & configs
-		- Getting sudo
-		- Install nano & ssh config
-		- Install make
-		- Install docker, docker compose, & docker-cli-compose
-		- Setup a Desktop Environment
-		- Setup a shared folder
-		- Customize the DE
-- Docker containers
-	- Mariadb
-	- Nginx
-	- Wordpress
-- References
+- [Guides to read](#guides-to-read)
+- [VM setup & OS installation](#vm-setup--os-installation)
+	- [Preparation](#preparation)
+	- [Install OS](#install-os)
+	- [OS setup, essential installations, & configs](#os-setup-essential-installations--configs)
+		- [Getting sudo](#getting-sudo)
+		- [Install make, nano & ssh config](#install-make-nano--ssh-config)
+		- [Install docker, docker compose, & docker-cli-compose](#install-docker-docker-compose--docker-cli-compose)
+		- [Setup a Desktop Environment](#setup-a-desktop-environment)
+		- [Setup a shared folder](#setup-a-shared-folder)
+		- [Customize the DE](#customize-the-de)
+		- [Utilities: VSCode remote SSH, git, etc](#utilities-vscode-remote-ssh-git-etc)
+- [Docker containers](#docker-containers)
+	- [Mariadb](#mariadb)
+		- [Dockerfile](#dockerfile)
+		- [Entrypoint script](#entrypoint-script)
+		- [Configs](#configs)
+	- [Nginx](#nginx)
+		- [Dockerfile](#dockerfile-1)
+		- [Entrypoint script](#entrypoint-script-1)
+		- [Configs](#configs-1)
+	- [Wordpress](#wordpress)
+		- [Dockerfile](#dockerfile-2)
+		- [Entrypoint script](#entrypoint-script-2)
+		- [Configs](#configs-2)
+- [References](#references)
 
 ## Guides to read
 - https://github.com/Vikingu-del/Inception-Guide (from start to end ?)
@@ -27,7 +37,8 @@
 - https://github.com/facetint/Inception
 - https://github.com/cfareste/Inception
 
-## VM setup & OS installation[^1][^2]:
+## VM setup & OS installation:
+Steps that were taken to prepare the VM[^1][^2]. 
 Reqs:
 1. Virtualbox
 2. Alpine linux
@@ -157,16 +168,16 @@ Reqs:
 	$> docker run hello-world
 	```
 
-#### Setup a Desktop Environment[^4]
-- To get a desktop environment.
+#### Setup a Desktop Environment
+- To get a desktop environment[^4].
 	```sh
 	$> sudo setup-desktop
 	```
 - Pick xfce like in MXlinux (or whatever is more familiar).
 - Simply reboot afterwards.
 
-#### Setup a shared folder[^5]
-- Create a mount point and install libraries.
+#### Setup a shared folder
+- Create a mount point and install libraries[^5].
 	```sh
 	$> sudo mkdir -p /mnt/shared
 	$> sudo apk add virtualbox-guest-additions linux-virt #install VirtualBox Guest Additions
