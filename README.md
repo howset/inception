@@ -38,7 +38,8 @@
 - https://github.com/cfareste/Inception
 
 ## VM setup & OS installation:
-Steps that were taken to prepare the VM[^1][^2]. 
+Steps that were taken to prepare the VM[^1][^2].
+
 Reqs:
 1. Virtualbox
 2. Alpine linux
@@ -203,19 +204,19 @@ Reqs:
 
 #### Customize the DE
 - Shortcuts:
-	- Applications -> Settings -> Settings Manager
-		- Keyboard -> Application shortcut: Change `xfce4-popup-applicationsmenu` to Super btn. Whiskermenu is much better, but must be installed first (`sudo apk add xfce4-whiskermenu-plugin`).
-		- Window Manager -> Keyboard: Adjust window placement (doesnt work :( )
-		- Window Manager -> Keyboard: Adjust moving window to other workspace.
-- Get new set of icons, extract, and put in either /usr/share/icons or /home/.local/share/icons. I chose Zafiro.
-	- Choose in Applications -> Settings -> Settings Manager
-		- Then Appearance -> Icons
-- Get a dark theme, extract, and put in either /usr/share/themes or /home/.local/share/themes. I chose Everforest.
-	- Choose Applications -> Settings -> Settings Manager
-		- Then Appearance -> Style
-		- And Window Manager -> Style
+	- `Applications` -> `Settings` -> `Settings Manager`
+		- `Keyboard` -> `Application` shortcut: Change `xfce4-popup-applicationsmenu` to Super btn. Whiskermenu is much better, but must be installed first (`sudo apk add xfce4-whiskermenu-plugin`).
+		- `Window Manager` -> `Keyboard`: Adjust window placement (doesnt work :( )
+		- `Window Manager` -> `Keyboard`: Adjust moving window to other workspace.
+- Get new set of icons, extract, and put in either `/usr/share/icons` or `/home/.local/share/icons`. I chose Zafiro.
+	- Choose in `Applications` -> `Settings` -> `Settings Manager`
+		- Then `Appearance` -> `Icons`
+- Get a dark theme, extract, and put in either `/usr/share/themes` or `/home/.local/share/themes`. I chose Everforest.
+	- Choose `Applications` -> `Settings` -> `Settings Manager`
+		- Then `Appearance` -> `Style`
+		- And `Window Manager` -> `Style`
 - Most importantly, change wallpepah! 90% of a theme is the wallpaper.
-- If font color for desktop icons has to be changed, edit/add gtk.css in ~/.config/gtk-3.0/ with the following:
+- If font color for desktop icons has to be changed, edit/add `gtk.css` in `~/.config/gtk-3.0/` with the following:
 	```css
 	/* default state */
 	XfdesktopIconView.view {
@@ -297,24 +298,24 @@ May not use a prebuilt image[^8]:.
 # Base image
 FROM alpine:3.21.1
 
-# Install MariaDB
+#install mdb
 RUN apt update && apt install -y \
 	mariadb \
 	mariadb-client \
 	bash
 
-# Initialization script
+#init script
 COPY tools/mdb_init.sh /usr/local/bin/mdb_init.sh
 RUN chmod +x /usr/local/bin/mdb_init.sh
 
-# MariaDB config
+#mdb config
 COPY conf/mdb.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
 RUN chmod u=rw,go=r /etc/mysql/mariadb.conf.d/50-server.cnf
 
-# Expose port (for WP connection)
+#expose port (for WP connection)
 EXPOSE 3306
 
-# Use the init script as the container's entrypoint
+#use the init script as entrypoint
 ENTRYPOINT ["/usr/local/bin/mdb_init.sh"]
 CMD ["mariadb"]
 ```
