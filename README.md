@@ -1,5 +1,23 @@
 # Inception
 
+## Content
+- VM setup & OS installation
+	- Preparation
+	- Install OS
+	- OS setup, essential installations, & configs
+		- Getting sudo
+		- Install nano & ssh config
+		- Install make
+		- Install docker, docker compose, & docker-cli-compose
+		- Setup a Desktop Environment
+		- Setup a shared folder
+		- Customize the DE
+- Docker containers
+	- Mariadb
+	- Nginx
+	- Wordpress
+- References
+
 ## Guides to read
 - https://github.com/Vikingu-del/Inception-Guide (from start to end ?)
 - https://github.com/Forstman1/inception-42
@@ -173,7 +191,51 @@ Reqs:
 	$> sudo nano /etc/fstab #then add the line
 	```
 
-#### Minimal effort theme
+#### Customize the DE
+- Shortcuts:
+	- Applications -> Settings -> Settings Manager
+		- Keyboard -> Application shortcut: Change `xfce4-popup-applicationsmenu` to Super btn. Whiskermenu is much better, but must be installed first (`sudo apk add xfce4-whiskermenu-plugin`).
+		- Window Manager -> Keyboard: Adjust window placement (doesnt work :( )
+		- Window Manager -> Keyboard: Adjust moving window to other workspace.
+- Get new set of icons, extract, and put in either /usr/share/icons or /home/.local/share/icons. I chose Zafiro.
+	- Choose in Applications -> Settings -> Settings Manager
+		- Then Appearance -> Icons
+- Get a dark theme, extract, and put in either /usr/share/themes or /home/.local/share/themes. I chose Everforest.
+	- Choose Applications -> Settings -> Settings Manager
+		- Then Appearance -> Style
+		- And Window Manager -> Style
+- Most importantly, change wallpepah! 90% of a theme is the wallpaper.
+- If font color for desktop icons has to be changed, edit/add gtk.css in ~/.config/gtk-3.0/ with the following:
+	```css
+	/* default state */
+	XfdesktopIconView.view {
+	-XfdesktopIconView-ellipsize-icon-labels: 1;
+	-XfdesktopIconView-tooltip-size: 32;
+	-XfdesktopIconView-cell-spacing: 4;
+	-XfdesktopIconView-cell-padding: 0;
+	-XfdesktopIconView-cell-text-width-proportion: 2;
+	background: transparent;
+	//letters colors
+	color: #48494B;
+	//radius, letter box corners
+	border-radius: 3px; }
+
+	/* active (selected) state */
+	XfdesktopIconView.view:active {
+	background: rgba(0, 0, 0, 0);
+	text-shadow: 0 1px 1px black; }
+
+	/* default label state */
+	XfdesktopIconView.view .label {
+	background: rgba(0, 0, 0, 0);
+	text-shadow: 1px 1px 2px black; }
+
+	/* active (selected) label state */
+	XfdesktopIconView.view .label:active {
+	color: white;
+	background: rgba(0, 0, 0, 0.2);
+	text-shadow: 0px 1px 1px black; }
+	```
 
 ## Docker containers
 ### Mariadb
