@@ -299,7 +299,7 @@ May not use a prebuilt image[^8]:.
 FROM alpine:3.21.1
 
 #install mdb
-RUN apt update && apt install -y \
+RUN apk update && apk add \
 	mariadb \
 	mariadb-client \
 	bash
