@@ -16,25 +16,29 @@
 ## VM setup & OS installation
 Reqs:
 1. virtualbox
-2. alpine linux, penultimate stable in https://alpinelinux.org/downloads/. (x86_64 for cluster comps)
+2. alpine linux
+	- Penultimate stable in https://alpinelinux.org/releases/. 
+	- Go to https://alpinelinux.org/downloads/, find `older releases` @ the bottom of the page.
+	- Find the proper version, go to releases (not main), look for -virt & x86_64 for cluster comps (-virt is lts kernel, configured for VM guests[^1])
 
 ### Preparation
 - open virtualbox & press new
 - specify folder in `sgoinfre`
 - specify:
 ```
-memory 1-3GB
+memory 1-3GB (3072MB)
 HD 20-30GB
-processors ?
+processors 4
 ```
 - go to settings, storage
 - put the iso in the optical drive
 
 ### Install OS
-- press start in virtual box
-- initial login with `root`
-- set keyboard layout & variant as `us`
-- enter system hostname as `[username].42.fr`
+- Press start in virtual box
+- __initial__ login for local hostwith `root`
+- Enter `setup-alpine` in the prompt
+	- set keyboard layout & variant as `us`
+- Enter system hostname as `[username].42.fr`
 - just press enter to everything (default) up to manual network configuration to which answer `no`
 - setup root password
 - set timezone
@@ -147,3 +151,11 @@ modprobe -a vboxsf
 mount -t vboxsf vbox_shared /mnt/shared
 ```
 - Change `vbox_shared` to whatever name specified in the virtualbox gui.
+
+## Docker containers
+### Mariadb
+### Nginx
+### Wordpress
+
+## References
+[^1]: https://wiki.alpinelinux.org/wiki/Kernels
