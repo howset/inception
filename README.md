@@ -27,9 +27,6 @@
 - https://github.com/facetint/Inception
 - https://github.com/cfareste/Inception
 
-### Useful sources
-- Not use prebuilt images (https://mariadb.com/docs/server/server-management/automated-mariadb-deployment-and-administration/docker-and-mariadb/creating-a-custom-container-image)
-
 ## VM setup & OS installation[^1][^2]:
 Reqs:
 1. Virtualbox
