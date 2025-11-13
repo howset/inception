@@ -36,6 +36,7 @@
 - https://medium.com/@imyzf/inception-3979046d90a0
 - https://github.com/facetint/Inception
 - https://github.com/cfareste/Inception
+- https://courses.mooc.fi/org/uh-cs/courses/devops-with-docker
 
 ## VM setup & OS installation:
 Steps that were taken to prepare the VM[^1][^2].
@@ -131,7 +132,7 @@ Reqs:
 		$> netstat -tul
 		```
 - In virtualbox, go to `settings` -> `network` -> `port forwarding`.
-- Set host as 4243 (berlin cluster), guest as 4242. Name it ssh.
+- Set host as 4243 (berlin cluster), guest as 4242. Name it ssh. (Better: host 2222 and guest 22 to avoid conflict with github, so __DON'T__ change the ssh-config & sshd_config!!!)
 - Test from cluster terminal
 	```sh
 	$> ssh localhost -p 4243 #or ssh 127.0.0.1 -p 4243
@@ -264,6 +265,8 @@ Reqs:
 - Install git if necessary
 
 ## Docker containers
+- The base image can basically be from anything, either from debian:bookworm or alpine:3.21.1 as long as the kernel is the same (linux), the difference is the size of the image using alpine ended up smaller than debian (~200 MB vs ~500 MB), and some adjustments also has to be made due to some differences between the systems (e.g. alpine has no bash by default).
+
 - Useful but can be confusing commands:[^6]
 
 | Command			| Options	| Parameter			|Function			|
@@ -288,11 +291,14 @@ Reqs:
 | docker exec 		| 			| [ID]/[Name]		| start a container |
 | docker restart	| 			| [ID]/[Name]		| restart a container |
 | docker exec 		| -it		| [Cont_name] bash	| execute -it on a running container using bash|
+| docker top 		| 			| [ID]/[Name]		| first process listed is PID 1|
 
 ### Mariadb
 #### Dockerfile
-The base image can basically be from anything, either from debian:bookworm or alpine:3.21.1 as long as the kernel is the same, the difference is the size of the image using alpine ended up smaller than debian (~200 MB vs ~500 MB), and some adjustments also has to be made due to some differences between the systems (alpine has no bash by default).
-May not use a prebuilt image[^8]:.
+
+- May not use a prebuilt image[^8].
+- Since the init script that is used as the entrypoint was made during testing (using bash as default in the shebang), so bash has to be installed along with mariadb server & client. 
+- Although setting file permissions using RUN may seem to be unnecessarily adding layers, but its safe to make sure that all runs nicely. 
 
 ```docker
 # Base image
