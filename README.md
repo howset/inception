@@ -132,11 +132,12 @@ Reqs:
 		$> netstat -tul
 		```
 - In virtualbox, go to `settings` -> `network` -> `port forwarding`.
-- Set host as 4243 (berlin cluster), guest as 4242. Name it ssh. (Better: host 2222 and guest 22 to avoid conflict with github, so __DON'T__ change the ssh-config & sshd_config!!!)
+- Set host as 4243 (berlin cluster), guest as 4242. Name it ssh. 
 - Test from cluster terminal
 	```sh
 	$> ssh localhost -p 4243 #or ssh 127.0.0.1 -p 4243
 	```
+- __IMPORTANT!!__ If using git, then better to use host 2222 and guest 22 to avoid conflict with github, so __DON'T__ change the ssh-config & sshd_config!!! (Leave at 22)
 
 #### Install docker, docker compose, & docker-cli-compose
 - Get `docker`, `docker-cli-compose`, & `docker compose`
@@ -262,7 +263,7 @@ Reqs:
 	$> sudo rc-service sshd restart
 	$> sudo rc-service sshd status
 	```
-- Install git if necessary
+- Install git if necessary (along with the ssh keys if necessary).
 
 ## Docker containers
 - The base image can basically be from anything, either from debian:bookworm or alpine:3.21.1 as long as the kernel is the same (linux), the difference is the size of the image using alpine ended up smaller than debian (~200 MB vs ~500 MB), and some adjustments also has to be made due to some differences between the systems (e.g. alpine has no bash by default).
