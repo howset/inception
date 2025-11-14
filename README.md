@@ -352,7 +352,7 @@ start_mdb_bg()
 apply_secure_fixes()
 {
 	mariadb -e "DELETE FROM mysql.user WHERE User='';" #remove anon users
-	mariadb -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" #allow only only localhost/root access
+	mariadb -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" #allow only localhost/root access
 	mariadb -e "DROP DATABASE IF EXISTS test;" #remove default test db, unnecessary actually
 	mariadb -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" #Remove privileges related to it
 	mariadb -e "FLUSH PRIVILEGES;" #apply immediately
