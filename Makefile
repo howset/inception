@@ -16,7 +16,68 @@ RES = \033[0m
 
 ##------------------------------------------------------------------##
 # Build rules
+
+# Using docker-compose (recommended)
+all-compose: compose-build compose-up
+
+# Using individual docker commands (legacy)
 all: build-mdb build-nginx run-mdb run-nginx
+
+##------------------------------------------------------------------##
+# Docker Compose targets
+
+# Build images with docker-compose
+compose-build:
+	@echo -e "$(GRE)Building images with docker-compose...$(RES)"
+	docker-compose build
+	@echo -e "$(GRE)Build complete!$(RES)"
+
+# Start services with docker-compose
+compose-up:
+	@echo -e "$(GRE)Starting services with docker-compose...$(RES)"
+	docker-compose up -d
+	@echo -e "$(GRE)Services started!$(RES)"
+
+# Stop services with docker-compose
+compose-stop:
+	@echo -e "$(RED)Stopping services...$(RES)"
+	docker-compose stop
+	@echo -e "$(GRE)Services stopped!$(RES)"
+
+# Remove containers and networks with docker-compose
+compose-down:
+	@echo -e "$(RED)Removing containers and networks...$(RES)"
+	docker-compose down
+	@echo -e "$(GRE)Containers removed!$(RES)"
+
+# Remove everything including volumes with docker-compose
+compose-clean:
+	@echo -e "$(RED)Removing all services, volumes, and networks...$(RES)"
+	docker-compose down -v
+	@echo -e "$(GRE)Full clean complete!$(RES)"
+
+# View logs from docker-compose
+compose-logs:
+	docker-compose logs -f
+
+# View MariaDB logs from docker-compose
+compose-logs-mdb:
+	docker-compose logs -f mariadb
+
+# View Nginx logs from docker-compose
+compose-logs-nginx:
+	docker-compose logs -f nginx
+
+# Execute bash in MariaDB container via docker-compose
+compose-exec-mdb:
+	docker-compose exec mariadb /bin/bash
+
+# Execute bash in Nginx container via docker-compose
+compose-exec-nginx:
+	docker-compose exec nginx /bin/bash
+
+##------------------------------------------------------------------##
+# Individual Docker Commands (legacy)
 
 # Build MariaDB image
 build-mdb:
@@ -109,4 +170,4 @@ exec-nginx:
 
 ##------------------------------------------------------------------##
 #.PHONY
-.PHONY: all build build-mdb build-nginx run run-mdb run-nginx stop stop-mdb stop-nginx clean fclean re logs-mdb logs-nginx exec-mdb exec-nginx
+.PHONY: all all-compose build build-mdb build-nginx run run-mdb run-nginx stop stop-mdb stop-nginx clean fclean re logs-mdb logs-nginx exec-mdb exec-nginx compose-build compose-up compose-stop compose-down compose-clean compose-logs compose-logs-mdb compose-logs-nginx compose-exec-mdb compose-exec-nginx

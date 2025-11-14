@@ -8,11 +8,11 @@ RUN apk update && apk add \
 	bash
 
 #init script
-COPY tools/nginx_init.sh /usr/local/bin/nginx_init.sh
+COPY srcs/requirements/nginx/tools/nginx_init.sh /usr/local/bin/nginx_init.sh
 RUN chmod +x /usr/local/bin/nginx_init.sh
 
 #nginx config
-COPY conf/nginx.cnf /etc/nginx/nginx.conf
+COPY srcs/requirements/nginx/conf/nginx.cnf /etc/nginx/nginx.conf
 
 #expose port (HTTP & HTTPS)
 EXPOSE 80 443

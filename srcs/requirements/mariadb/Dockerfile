@@ -8,11 +8,11 @@ RUN apk update && apk add \
 	bash
 
 #init script
-COPY tools/mdb_init.sh /usr/local/bin/mdb_init.sh
+COPY srcs/requirements/mariadb/tools/mdb_init.sh /usr/local/bin/mdb_init.sh
 RUN chmod +x /usr/local/bin/mdb_init.sh
 
 #mdb config
-COPY conf/mdb.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
+COPY srcs/requirements/mariadb/conf/mdb.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
 RUN chmod u=rw,go=r /etc/mysql/mariadb.conf.d/50-server.cnf
 
 #expose port (for WP connection)
