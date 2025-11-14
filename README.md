@@ -197,7 +197,7 @@ Reqs:
 	$> sudo modprobe -a vboxsf #insert module
 	$> sudo mount -t vboxsf Shared /mnt/shared
 	```
-- To make it permanent, add the line `vbox_shared  /mnt/shared  vboxsf  defaults  0  0` in /etc/fstab
+- To make it permanent, add the line `Shared  /mnt/shared  vboxsf  defaults  0  0` in /etc/fstab
 	```sh
 	$> echo "Shared  /mnt/shared  vboxsf  defaults  0  0" | sudo tee -a /etc/fstab
 	or 
@@ -289,7 +289,7 @@ Reqs:
 | docker run 		| --name	| [Cont_name] [Name]| specify name for the container |
 | docker run 		| -it		| [Cont_name] bash	| run a container interactive using pseudo-TTY |
 | docker run 		| -p 		| <host_port>:<container_port> <image_name> | run container & publish a port to the host|
-| docker exec 		| 			| [ID]/[Name]		| start a container |
+| docker start 		| 			| [ID]/[Name]		| start a container |
 | docker restart	| 			| [ID]/[Name]		| restart a container |
 | docker exec 		| -it		| [Cont_name] bash	| execute -it on a running container using bash|
 | docker top 		| 			| [ID]/[Name]		| first process listed is PID 1|
