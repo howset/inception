@@ -407,3 +407,34 @@ exec mariadbd --user=mysql --datadir=/var/lib/mysql --bind-address=0.0.0.0
 [^6]: https://dockerlabs.collabnix.com/docker/cheatsheet/
 [^7]: https://dev.mysql.com/doc/refman/8.4/en/mysql-secure-installation.html
 [^8]: https://mariadb.com/docs/server/server-management/automated-mariadb-deployment-and-administration/docker-and-mariadb/creating-a-custom-container-image
+
+## Plan
+
+1. Create a Nginx container
+- Similar structure: Dockerfile + config files + init script
+- Expose port 443 (HTTPS) and 80 (HTTP)
+- Serve static files or reverse proxy
+
+2. Create a WordPress container
+- Install PHP-FPM
+- Install WordPress core files
+- Configure to connect to MariaDB using env vars
+- Set up proper file permissions
+
+3. Use docker-compose to orchestrate all services
+- Define all three services (MariaDB, Nginx, WordPress)
+- Set up networking between containers
+- Define volumes for data persistence
+- Pass environment variables to each service
+
+4. Add volume management
+- Persistent storage for databases (/var/lib/mysql)
+- Persistent storage for WordPress files
+- Persistent storage for Nginx configs
+
+5. Test the full stack
+- Verify all containers communicate
+- Test WordPress installation and functionality
+- Check data persists after container restart
+
+Priority: Start with docker-compose to tie everything together, then build/test the WordPress container.

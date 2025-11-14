@@ -1,16 +1,8 @@
 [mariadbd]
-#configs, user that executes mariadbd, mariadb PID, and connection socket
-user					= mysql
-pid-file				= /run/mysqld/mysqld.pid
-socket					= /run/mysqld/mysqld.sock
-
-#mdb install dir & mdb storage dir
-basedir					= /usr
-datadir					= /var/lib/mysql
+#configs, mariadb PID, and connection socket
+#pid-file				= /run/mysqld/mysqld.pid
+#socket					= /run/mysqld/mysqld.sock
 
 #allow all connections
 bind-address			= 0.0.0.0
 
-# Configure what character-encoding is accepted (utf8 +) and what sorting rules are applied to characters
-#character-set-server	= utf8mb4
-#collation-server		= utf8mb4_unicode_ci
