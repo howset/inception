@@ -15,7 +15,7 @@ RUN chmod +x /usr/local/bin/nginx_init.sh
 COPY srcs/requirements/nginx/conf/nginx.cnf /etc/nginx/nginx.conf
 
 #expose port (HTTP & HTTPS)
-EXPOSE 80 443
+EXPOSE 443
 
 #use the init script as entrypoint
 ENTRYPOINT ["/usr/local/bin/nginx_init.sh"]
