@@ -49,4 +49,4 @@ setup_db
 pkill -f "mariadbd.*skip-networking" || true
 
 # Start MariaDB server in the foreground (PID 1)
-exec mariadbd --user=mysql --datadir=/var/lib/mysql
+exec mariadbd --user=mysql --datadir=/var/lib/mysql "$@"
