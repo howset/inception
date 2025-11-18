@@ -12,7 +12,7 @@ if [ ! -f /etc/nginx/ssl/server.crt ]; then
 		-keyout /etc/nginx/ssl/server.key \
 		-out /etc/nginx/ssl/server.crt \
 		-days 365 -nodes \
-		-subj "/C=FR/ST=IDF/L=Paris/O=42/CN=localhost"
+		-subj "/C=DE/ST=Berlin/L=Berlin/O=42/CN=localhost"
 fi
 
 # Set proper permissions for SSL files

@@ -5,11 +5,10 @@ set -e
 
 start_mdb_bg()
 {
-	mkdir -p /run/mysqld #-p avoids errors if it already exists
-	#create database
-	if [ ! -d /var/lib/mysql/mysql ]; then
+	if [ ! -d /var/lib/mysql/mysql ]; then #create database
 		mariadb-install-db --user=mysql --datadir=/var/lib/mysql
 	fi
+	mkdir -p /run/mysqld #-p avoids errors if it already exists
 	chown -R mysql:mysql /run/mysqld /var/lib/mysql #set mysql user and group
 	chmod u=rwx,g=,o= /run/mysqld #set permissions so only owner mysql can read/write/execute in dir to improve security.
 	mariadbd --user=mysql --datadir=/var/lib/mysql --skip-networking=0 & #mdb server daemon in bg, specify user, datadir, ensure networking is enabled

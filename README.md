@@ -295,107 +295,43 @@ Reqs:
 | docker top 		| 			| [ID]/[Name]		| first process listed is PID 1|
 
 ### Mariadb
-#### Dockerfile
+The basic ideass are as follows:
+1. Install mariadb manually because prebuilt images are forbidden[^8]. This is done by the dockerfile. 
+	- While at it, copy the configuration file and entrypoint script to a (general) location in the docker container and set up appropriate permissions.
+	- Expose port for communication.
+	- Specify the init script as the entrypoint.
+2. The database initialization is the responsibiity of the script.
+	- That includes creating the data dir, and setting ownership.
+	- Running `mysql_install_db`.
+	- Go through securing the installation by `mariadb-secure-installation`.
+3. The config file consists of whatever is necessary for the setup. 
 
-- May not use a prebuilt image[^8].
+#### Dockerfile
 - Since the init script that is used as the entrypoint was made during testing (using bash as default in the shebang), so bash has to be installed along with mariadb server & client.
 - Although setting file permissions using RUN may seem to be unnecessarily adding layers, but its safer and easier to make sure that all runs nicely.
 
-```docker
-# Base image
-FROM alpine:3.21.1
-
-#install mdb
-RUN apk update && apk add \
-	mariadb \
-	mariadb-client \
-	bash
-
-#init script
-COPY tools/mdb_init.sh /usr/local/bin/mdb_init.sh
-RUN chmod +x /usr/local/bin/mdb_init.sh
-
-#mdb config
-COPY conf/mdb.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
-RUN chmod u=rw,go=r /etc/mysql/mariadb.conf.d/50-server.cnf
-
-#expose port (for WP connection)
-EXPOSE 3306
-
-#use the init script as entrypoint
-ENTRYPOINT ["/usr/local/bin/mdb_init.sh"]
-CMD ["mariadb"]
-```
 #### Entrypoint script
-apply_secure_fixes() == mysql_secure_installation[^7]
+The flow is as follows:
+1. Start MariaDB in background (the daemon)
+2. Run SQL setup commands (cant do this if the daemon is not running)
+3. Stop background server
+4. Start fresh MariaDB in foreground (to make it PID 1)
 
-```bash
-#!/bin/bash
-
-#exit immediately if any command fails, prevents the container from silently continuing if something breaks
-set -e
-
-start_mdb_bg()
-{
-	mkdir -p /run/mysqld #-p avoids errors if it already exists
-	#create database if not already done
-	if [ ! -d /var/lib/mysql/mysql ]; then
-		mariadb-install-db --user=mysql --datadir=/var/lib/mysql
-	fi
-	chown -R mysql:mysql /run/mysqld /var/lib/mysql #set mysql user and group
-	chmod u=rwx,g=,o= /run/mysqld #set permissions so only owner mysql can read/write/execute in dir to improve security.
-	mariadbd --user=mysql --datadir=/var/lib/mysql --skip-networking=0 --bind-address=0.0.0.0 & #mdb server daemon in bg, specify user, datadir, ensure networking is enabled, & allow any connection
-	sleep 5
-}
-
-#reproduce mysql_secure_installation noninteractively
-apply_secure_fixes()
-{
-	mariadb -e "DELETE FROM mysql.user WHERE User='';" #remove anon users
-	mariadb -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" #allow only localhost/root access
-	mariadb -e "DROP DATABASE IF EXISTS test;" #remove default test db, unnecessary actually
-	mariadb -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" #Remove privileges related to it
-	mariadb -e "FLUSH PRIVILEGES;" #apply immediately
-}
-
-setup_db()
-{
-	local DATABASE_NAME=MDB_NAME666
-	local DATABASE_USER_NAME=MDB_USER666
-	local DATABASE_USER_PASSWORD=MDB_PASSWD666
-
-	mariadb -e "CREATE DATABASE IF NOT EXISTS $DATABASE_NAME;" #create db
-	mariadb -e "CREATE USER IF NOT EXISTS '$DATABASE_USER_NAME'@'%' IDENTIFIED BY '$DATABASE_USER_PASSWORD';" #adds new user with password, allowing connection from any host ('%')
-	mariadb -e "GRANT ALL ON $DATABASE_NAME.* TO '$DATABASE_USER_NAME'@'%';" #give full privilege to user
-	mariadb -e "FLUSH PRIVILEGES;"
-}
-
-start_mdb_bg
-apply_secure_fixes
-setup_db
-
-# stop temporary background server
-if pgrep mariadbd >/dev/null 2>&1; then #check if mdb is running
-	mysqladmin --user=root shutdown 2>/dev/null || pkill mariadbd #stop nicely or kill it
-	while pgrep mariadbd >/dev/null 2>&1; do sleep 0.1; done #waits until process fully exits
-fi
-
-# Start MariaDB server in the foreground (PID 1)
-exec mariadbd --user=mysql --datadir=/var/lib/mysql --bind-address=0.0.0.0
-```
+- `start_mdb_bg()` runs the command `mariadb-install-db` and creates the directories `/run/mysqld` adn `/var/lib/mysql` and sets up ownership/permissions, then runs the daemon.
+- the function `apply_secure_fixes()` is basically running the `mysql_secure_installation`[^7] maually.
+- `setup_db()`
+- then sopss the daemon and `exec` mariadb as foreground process. 
 
 #### Configs
+The config file consist of the allowed connections (all) and then put (copied) to the proper location (by the dockerfile).
+
 ### Nginx
 #### Dockerfile
-
 #### Entrypoint script
-
 #### Configs
 ### Wordpress
 #### Dockerfile
-
 #### Entrypoint script
-
 #### Configs
 
 ## References
