@@ -44,7 +44,7 @@ Steps that were taken to prepare the VM[^1][^2].
 Reqs:
 1. Virtualbox
 2. Alpine linux
-	- Penultimate stable in https://alpinelinux.org/releases/. 
+	- Penultimate stable in https://alpinelinux.org/releases/.
 	- Go to https://alpinelinux.org/downloads/, find `older releases` @ the bottom of the page.
 	- Find the proper version, go to releases (not main), look for -virt & x86_64 for cluster comps (-virt is lts kernel, configured for VM guests[^3])
 
@@ -79,7 +79,7 @@ Reqs:
 
 ### OS setup, essential installations, & configs
 #### Getting sudo
-- Change to root 
+- Change to root
 	```sh
 	$> su - #start the shell as login shell
 	```
@@ -132,7 +132,7 @@ Reqs:
 		$> netstat -tul
 		```
 - In virtualbox, go to `settings` -> `network` -> `port forwarding`.
-- Set host as 4243 (berlin cluster), guest as 4242. Name it ssh. 
+- Set host as 4243 (berlin cluster), guest as 4242. Name it ssh.
 - Test from cluster terminal
 	```sh
 	$> ssh localhost -p 4243 #or ssh 127.0.0.1 -p 4243
@@ -162,7 +162,7 @@ Reqs:
 	```sh
 	$> sudo adduser [username] docker
 	```
-- Note: 
+- Note:
 	- `docker`: core Docker runtime (daemon and CLI)
 	- `docker-cli-compose`: compose plugin for Docker CLI
 	- `docker-compose`: deprecated Python-based Compose binary, included for compatibility reasons only.
@@ -192,7 +192,7 @@ Reqs:
 	- Mount point: /mnt/shared
 	- Auto-mount: check
 	```
-- Start then mount the folder 
+- Start then mount the folder
 	```sh
 	$> sudo modprobe -a vboxsf #insert module
 	$> sudo mount -t vboxsf Shared /mnt/shared
@@ -200,7 +200,7 @@ Reqs:
 - To make it permanent, add the line `Shared  /mnt/shared  vboxsf  defaults  0  0` in /etc/fstab
 	```sh
 	$> echo "Shared  /mnt/shared  vboxsf  defaults  0  0" | sudo tee -a /etc/fstab
-	or 
+	or
 	$> sudo nano /etc/fstab #then add the line
 	```
 
@@ -252,7 +252,7 @@ Reqs:
 
 #### Utilities: VSCode remote SSH, git, etc
 - Edit `/etc/ssh/sshd_config`
-- Uncomment/edit/add this lines 
+- Uncomment/edit/add this lines
 	```
 	AllowTcpForwarding yes #needed by VSC Remote ssh
 	PermitOpen any #just for flexibility
@@ -298,8 +298,8 @@ Reqs:
 #### Dockerfile
 
 - May not use a prebuilt image[^8].
-- Since the init script that is used as the entrypoint was made during testing (using bash as default in the shebang), so bash has to be installed along with mariadb server & client. 
-- Although setting file permissions using RUN may seem to be unnecessarily adding layers, but its safe to make sure that all runs nicely. 
+- Since the init script that is used as the entrypoint was made during testing (using bash as default in the shebang), so bash has to be installed along with mariadb server & client.
+- Although setting file permissions using RUN may seem to be unnecessarily adding layers, but its safer and easier to make sure that all runs nicely.
 
 ```docker
 # Base image
