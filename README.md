@@ -302,8 +302,8 @@ The basic ideass are as follows:
 	- Specify the init script as the entrypoint.
 2. The database initialization is the responsibiity of the script.
 	- That includes creating the data dir, and setting ownership.
-	- Running `mysql_install_db`.
-	- Go through securing the installation by `mariadb-secure-installation`.
+	- Running `mariadb-install-db`[^9].
+	- Go through securing the installation by `mariadb-secure-installation`[^10].
 3. The config file consists of whatever is necessary for the setup. 
 
 #### Dockerfile
@@ -343,7 +343,8 @@ The config file consist of the allowed connections (all) and then put (copied) t
 [^6]: https://dockerlabs.collabnix.com/docker/cheatsheet/
 [^7]: https://dev.mysql.com/doc/refman/8.4/en/mysql-secure-installation.html
 [^8]: https://mariadb.com/docs/server/server-management/automated-mariadb-deployment-and-administration/docker-and-mariadb/creating-a-custom-container-image
-
+[^9]: https://mariadb.com/docs/server/clients-and-utilities/deployment-tools/mariadb-install-db
+[^10]: https://mariadb.com/docs/server/clients-and-utilities/deployment-tools/mariadb-secure-installation
 ## Plan
 
 1. Create a Nginx container

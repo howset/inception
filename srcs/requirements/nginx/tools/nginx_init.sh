@@ -22,5 +22,5 @@ chmod u=rw,g=r,o=r /etc/nginx/ssl/server.crt
 # Create nginx run directory if it doesn't exist
 mkdir -p /run/nginx
 
-# Start Nginx in the foreground (PID 1)
+# Start Nginx in the foreground/PID 1 (daemon off)
 exec nginx -g "daemon off;" "$@"
