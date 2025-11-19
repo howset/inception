@@ -312,6 +312,34 @@ Notes:
 #### Dockerfile
 - Since the init script that is used as the entrypoint was made during testing (using bash as default in the shebang), so bash has to be installed along with mariadb server & client.
 - Although setting file permissions using RUN may seem to be unnecessarily adding layers, but its safer and easier to make sure that all runs nicely.
+- An alternate to docker hub to pull image if somehow dockerhub is down can be amazon[^12].
+
+```docker
+# Base image
+FROM alpine:3.21.1
+#FROM public.ecr.aws/docker/library/alpine:3.21.1
+
+#install mdb
+RUN apk update && apk add \
+	mariadb \
+	mariadb-client \
+	bash
+
+#init script
+COPY srcs/requirements/mariadb/tools/mdb_init.sh /usr/local/bin/mdb_init.sh
+RUN chmod +x /usr/local/bin/mdb_init.sh
+
+#mdb config
+COPY srcs/requirements/mariadb/conf/mdb.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
+RUN chmod u=rw,go=r /etc/mysql/mariadb.conf.d/50-server.cnf
+
+#expose port (for WP connection)
+EXPOSE 3306
+
+#use the init script as entrypoint
+ENTRYPOINT ["/usr/local/bin/mdb_init.sh"]
+CMD ["mariadbd", "--user=mysql", "--datadir=/var/lib/mysql"]
+```
 
 #### Entrypoint script
 The flow is as follows:
@@ -321,17 +349,179 @@ The flow is as follows:
 4. Start fresh MariaDB in foreground (to make it PID 1)
 
 - `start_mdb_bg()` runs the command `mariadb-install-db` and creates the directories `/run/mysqld` adn `/var/lib/mysql` and sets up ownership/permissions, then runs the daemon.
-- the function `apply_secure_fixes()` is basically running the `mysql_secure_installation`[^7] maually.
+- the function `apply_secure_fixes()` is basically running the `mariadb_secure_installation` manually.
 - `setup_db()`
-- then sopss the daemon and `exec` mariadb as foreground process. 
+- then stops the daemon and `exec` mariadb as foreground process.
+
+```bash
+#!/bin/bash
+
+#exit immediately if any command fails, prevents the container from silently continuing if something breaks
+set -e
+
+start_mdb_bg()
+{
+	if [ ! -d /var/lib/mysql/mysql ]; then #create database
+		mariadb-install-db --user=mysql --datadir=/var/lib/mysql
+	fi
+	mkdir -p /run/mysqld #-p avoids errors if it already exists
+	chown -R mysql:mysql /run/mysqld /var/lib/mysql #set mysql user and group
+	chmod u=rwx,g=,o= /run/mysqld #set permissions so only owner mysql can read/write/execute in dir to improve security.
+	mariadbd --user=mysql --datadir=/var/lib/mysql --skip-networking=0 & #mdb server daemon in bg, specify user, datadir, ensure networking is enabled
+	sleep 5
+}
+
+#reproduce mysql_secure_installation noninteractively
+apply_msi()
+{
+	mariadb -e "DELETE FROM mysql.user WHERE User='';" #remove anon users
+	mariadb -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" #allow only localhost/root access
+	mariadb -e "DROP DATABASE IF EXISTS test;" #remove default test db
+	mariadb -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" #Remove privileges related to it
+	mariadb -e "FLUSH PRIVILEGES;" #apply immediately
+}
+
+setup_db()
+{
+	local DATABASE_NAME=MDB_NAME666
+	local DATABASE_USER_NAME=MDB_USER666
+	local DATABASE_USER_PASSWORD=MDB_PASSWD666
+
+	mariadb -e "CREATE DATABASE IF NOT EXISTS $DATABASE_NAME;" #create db
+	mariadb -e "CREATE USER IF NOT EXISTS '$DATABASE_USER_NAME'@'%' IDENTIFIED BY '$DATABASE_USER_PASSWORD';" #adds new user with password, allowing connection from any host ('%')
+	mariadb -e "GRANT ALL ON $DATABASE_NAME.* TO '$DATABASE_USER_NAME'@'%';" #give full privilege to user
+	mariadb -e "FLUSH PRIVILEGES;"
+}
+
+start_mdb_bg
+apply_msi
+setup_db
+
+pkill -f "mariadbd.*skip-networking" || true
+
+# Start MariaDB server in the foreground (PID 1)
+exec "$@"
+```
 
 #### Configs
 The config file consist of the allowed connections (all --> bind-address 0.0.0.0) and then put (copied) to the proper location (by the dockerfile). 
+Many configuration options can be passed as flags to mariadbd[^15].
+
+```
+[mariadbd]
+#allow all connections
+bind-address			= 0.0.0.0
+```
 
 ### Nginx
+Follows basically similar idea with mdb. 
+
 #### Dockerfile
+-- Similar with mdb --
+```docker
+# Base image
+FROM alpine:3.21.1
+#FROM public.ecr.aws/docker/library/alpine:3.21.1
+
+#install nginx
+RUN apk update && apk add \
+	nginx \
+	openssl \
+	bash
+
+#init script
+COPY srcs/requirements/nginx/tools/nginx_init.sh /usr/local/bin/nginx_init.sh
+RUN chmod +x /usr/local/bin/nginx_init.sh
+
+#nginx config
+COPY srcs/requirements/nginx/conf/nginx.cnf /etc/nginx/http.d/inception.conf
+
+#expose port (HTTPS)
+EXPOSE 443
+
+#use the init script as entrypoint
+ENTRYPOINT ["/usr/local/bin/nginx_init.sh"]
+CMD [ "nginx", "-g", "daemon off;" ]
+
+```
+
 #### Entrypoint script
-#### Configs
+Sets up SSL?
+```bash
+#!/bin/bash
+
+#exit immediately if any command fails, prevents the container from silently continuing if something breaks
+set -e
+
+#create directories
+create_dirs()
+{
+	mkdir -p /etc/nginx/ssl #to store SSL/TLS certificates and keys
+	mkdir -p /run/nginx #create nginx run directory if it doesn't exist
+}
+
+#generate (self-signed) SSL cert if it doesn't exist
+generate_ss_ssl()
+{
+	if [ ! -f /etc/nginx/ssl/server.crt ]; then
+		openssl req -x509 \
+			-newkey rsa:4096 \
+			-keyout /etc/nginx/ssl/server.key \
+			-out /etc/nginx/ssl/server.crt \
+			-days 365 \
+			-nodes \
+			-subj "/C=DE/ST=Berlin/L=Berlin/O=42/CN=localhost"
+	fi
+}
+
+#set permissions for SSL files
+set_permissions()
+{
+	chmod u=rw,go= /etc/nginx/ssl/server.key
+	chmod u=rw,g=r,o=r /etc/nginx/ssl/server.crt
+}
+
+create_dirs
+generate_ss_ssl
+set_permissions
+
+# Start Nginx in the foreground/PID 1 (daemon off)
+exec "$@"
+```
+
+
+#### Configs[^16]
+The default config file[^13][^14].
+
+The config file `nginx.cnf` is __not__ copied to the docker container (overwrite) in `/etc/nginx/nginx.conf` because that is the default one, and in the last line _virtual hosts configs includes_ points to `/etc/nginx/http.d/*.conf`.
+
+```
+server {
+	#port to listen (only 443) in ipv4 & 6
+	listen	443 ssl;
+	listen	[::]:443 ssl;
+
+	#which domain to respond
+	server_name hsetyamu.42.fr;
+
+	#SSL certs-key & TLS
+	ssl_certificate_key			/etc/nginx/ssl/server.key;
+	ssl_certificate				/etc/nginx/ssl/server.crt;
+	ssl_protocols				TLSv1.3;
+	ssl_ciphers					HIGH:!aNULL:!MD5; #whitelist secure methods
+	ssl_prefer_server_ciphers	on; #prioritize this over client's
+
+	#root directory & index file
+	root	/var/www/html;
+	index	index.html index.php;
+
+	#match every possible request (/) & check if file exists, if not index at a directory, if not found then 404
+	location / {
+		try_files	$uri $uri/ =404;
+	}
+}
+```
+
 ### Wordpress
 #### Dockerfile
 #### Entrypoint script
@@ -349,6 +539,12 @@ The config file consist of the allowed connections (all --> bind-address 0.0.0.0
 [^9]: https://wiki.alpinelinux.org/wiki/MariaDB
 [^10]: https://mariadb.com/docs/server/clients-and-utilities/deployment-tools/mariadb-install-db
 [^11]: https://mariadb.com/docs/server/clients-and-utilities/deployment-tools/mariadb-secure-installation
+[^12]: https://gallery.ecr.aws/docker/library/alpine
+[^13]: https://wiki.alpinelinux.org/wiki/Nginx
+[^14]: https://hub.docker.com/_/nginx
+[^15]: https://hub.docker.com/_/mariadb
+[^16]: https://nginx.org/en/docs/beginners_guide.html
+
 ## Plan
 
 1. Create a Nginx container
