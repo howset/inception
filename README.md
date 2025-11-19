@@ -1,7 +1,7 @@
 # Inception
 
 ## Content
-- [Guides to read](#guides-to-read)
+- [Starting points](#starting-points)
 - [VM setup & OS installation](#vm-setup--os-installation)
 	- [Preparation](#preparation)
 	- [Install OS](#install-os)
@@ -28,15 +28,12 @@
 		- [Configs](#configs-2)
 - [References](#references)
 
-## Guides to read
-- https://github.com/Vikingu-del/Inception-Guide (from start to end ?)
-- https://github.com/Forstman1/inception-42
-- https://github.com/vbachele/Inception
-- https://github.com/Xperaz/inception-42
-- https://medium.com/@imyzf/inception-3979046d90a0
-- https://github.com/facetint/Inception
-- https://github.com/cfareste/Inception
+## Starting points
 - https://courses.mooc.fi/org/uh-cs/courses/devops-with-docker
+- https://wiki.alpinelinux.org/wiki/MariaDB
+- https://wiki.alpinelinux.org/wiki/Nginx
+- https://hub.docker.com/_/nginx
+- https://hub.docker.com/_/mariadb
 
 ## VM setup & OS installation:
 Steps that were taken to prepare the VM[^1][^2].
@@ -548,8 +545,6 @@ server {
 ## Plan
 
 1. Create a Nginx container
-- Similar structure: Dockerfile + config files + init script
-- Expose port 443 (HTTPS) and 80 (HTTP)
 - Serve static files or reverse proxy
 
 2. Create a WordPress container
