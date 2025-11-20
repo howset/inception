@@ -32,8 +32,10 @@
 - https://courses.mooc.fi/org/uh-cs/courses/devops-with-docker
 - https://wiki.alpinelinux.org/wiki/MariaDB
 - https://wiki.alpinelinux.org/wiki/Nginx
+- https://wiki.alpinelinux.org/wiki/WordPress
 - https://hub.docker.com/_/nginx
 - https://hub.docker.com/_/mariadb
+- https://hub.docker.com/_/wordpress
 
 ## VM setup & OS installation:
 Steps that were taken to prepare the VM[^1][^2].
@@ -521,6 +523,40 @@ server {
 
 ### Wordpress
 #### Dockerfile
+```docker
+# Base image
+FROM alpine:3.21.1
+#FROM public.ecr.aws/docker/library/alpine:3.21.1
+
+#install wordpress
+RUN apk update && apk add \
+	php83 \ #base php
+	php83-fpm \ #fpm
+	php83-mysqli \ #toconnect to mdb
+	php83-json \ #for json
+	php83-opcache \ #caching
+	php83-gd \ #images related
+	php83-pecl-imagick \ #images related
+	php83-curl \ #for api calls
+	php83-xml \ #for xmls
+	php83-xmlreader \ #for xmls
+	php83-simplexml \ #for xmls
+	php83-zip \ #
+	php83-dom \ #
+	php83-iconv \ #character encoding
+	php83-mbstring \ #multibyte strings
+	php83-phar \ #
+	php83-session \ #for admin login
+	php83-openssl \ #https & api requests
+	php83-tokenizer \ #
+	php83-fileinfo \ #to check mime header
+	openssl \
+	imagemagick \
+	icu-data-full \ #internationalization (umlauts etc)
+	mariadb-client \ #to debug connections
+	curl tar ca-certificates \ #test without cacerts
+	bash
+```
 #### Entrypoint script
 #### Configs
 
@@ -541,6 +577,9 @@ server {
 [^14]: https://hub.docker.com/_/nginx
 [^15]: https://hub.docker.com/_/mariadb
 [^16]: https://nginx.org/en/docs/beginners_guide.html
+https://wiki.alpinelinux.org/wiki/WordPress
+https://hub.docker.com/_/wordpress
+https://make.wordpress.org/cli/handbook/guides/installing/
 
 ## Plan
 
