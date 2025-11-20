@@ -1,6 +1,6 @@
 # Base image
-#FROM alpine:3.21.1
-FROM public.ecr.aws/docker/library/alpine:3.21.1
+FROM alpine:3.21.1
+#FROM public.ecr.aws/docker/library/alpine:3.21.1
 
 #install nginx
 RUN apk update && apk add \
@@ -13,10 +13,11 @@ COPY srcs/requirements/nginx/tools/nginx_init.sh /usr/local/bin/nginx_init.sh
 RUN chmod +x /usr/local/bin/nginx_init.sh
 
 #nginx config
-COPY srcs/requirements/nginx/conf/nginx.cnf /etc/nginx/nginx.conf
+COPY srcs/requirements/nginx/conf/nginx.cnf /etc/nginx/http.d/inception.conf
 
-#expose port (HTTP & HTTPS)
+#expose port (HTTPS)
 EXPOSE 443
 
 #use the init script as entrypoint
 ENTRYPOINT ["/usr/local/bin/nginx_init.sh"]
+CMD [ "nginx", "-g", "daemon off;" ]
