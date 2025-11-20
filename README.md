@@ -528,37 +528,122 @@ server {
 FROM alpine:3.21.1
 #FROM public.ecr.aws/docker/library/alpine:3.21.1
 
-#install wordpress
+#install php-fpm & utils
 RUN apk update && apk add \
-	php83 \ #base php
-	php83-fpm \ #fpm
-	php83-mysqli \ #toconnect to mdb
-	php83-json \ #for json
-	php83-opcache \ #caching
-	php83-gd \ #images related
-	php83-pecl-imagick \ #images related
-	php83-curl \ #for api calls
-	php83-xml \ #for xmls
-	php83-xmlreader \ #for xmls
-	php83-simplexml \ #for xmls
-	php83-zip \ #
-	php83-dom \ #
-	php83-iconv \ #character encoding
-	php83-mbstring \ #multibyte strings
-	php83-phar \ #
-	php83-session \ #for admin login
-	php83-openssl \ #https & api requests
-	php83-tokenizer \ #
-	php83-fileinfo \ #to check mime header
+	php82 \
+	php82-fpm \
+	php82-mysqli \
+	php82-json \
+	php82-opcache \
+	php82-gd \
+	php82-pecl-imagick \
+	php82-curl \
+	php82-xml \
+	php82-xmlreader \
+	php82-simplexml \
+	php82-zip \
+	php82-dom \
+	php82-iconv \ 
+	php82-mbstring \
+	php82-phar \
+	php82-session \
+	php82-openssl \
+	php82-tokenizer \
+	php82-fileinfo \
 	openssl \
 	imagemagick \
-	icu-data-full \ #internationalization (umlauts etc)
-	mariadb-client \ #to debug connections
-	curl tar ca-certificates \ #test without cacerts
+	icu-data-full \
+	mariadb-client \
+	curl tar\
 	bash
+
+#install wp
+RUN curl -o /usr/local/bin/wp-cli.phar \
+	https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
+	chmod +x /usr/local/bin/wp-cli.phar && \
+	mv /usr/local/bin/wp-cli.phar /usr/local/bin/wp
+
+#init script
+COPY srcs/requirements/wordpress/tools/wp_init.sh /usr/local/bin/wp_init.sh
+RUN chmod +x /usr/local/bin/wp_init.sh
+
+#wp config
+COPY srcs/requirements/wordpress/conf/wp.conf /etc/php82/php-fpm.d/www.conf
+
+#expose port
+EXPOSE 9000
+
+#ENTRYPOINT ["/usr/local/bin/wp_init.sh"]
+#CMD ["php-fpm82", "-F"]
+ENTRYPOINT ["php-fpm82", "-F"]
 ```
+
 #### Entrypoint script
+```bash
+#!/bin/bash
+
+#exit immediately if any command fails, prevents the container from silently continuing if something breaks
+set -e
+
+# Wait for MariaDB to be ready
+#echo "Waiting for MariaDB to be ready..."
+#while ! nc -z mariadb 3306; do
+#    sleep 1
+#done
+#echo "MariaDB is ready!"
+
+# Configure WordPress if wp-config.php doesn't exist
+if [ ! -f /var/www/html/wp-config.php ]; then
+	echo "Configuring WordPress..."
+	/usr/local/bin/wp-cli.phar config create \
+		--dbname="${DATABASE_NAME:-MDB_NAME666}" \
+		--dbuser="${DATABASE_USER_NAME:-MDB_USER666}" \
+		--dbpass="${DATABASE_USER_PASSWORD:-MDB_PASSWD666}" \
+		--dbhost="mariadb" \
+		--path=/var/www/html
+fi
+
+# Set permissions
+#chown -R nobody:nobody /var/www/html
+#chmod -R 755 /var/www/html
+
+# Start PHP-FPM in foreground
+exec "$@"
+```
+
 #### Configs
+```
+[www]
+; PHP-FPM pool name
+listen = 0.0.0.0:9000
+listen.allowed_clients = 127.0.0.1, nginx
+
+; User and group
+user = nobody
+group = nogroup
+
+; Process manager
+pm = dynamic
+pm.max_children = 5
+pm.start_servers = 2
+pm.min_spare_servers = 1
+pm.max_spare_servers = 3
+
+; Logging
+access.log = /proc/self/fd/1
+;error_log = /proc/self/fd/2
+catch_workers_output = yes
+
+; Clear environment
+clear_env = no
+
+; PHP settings
+php_value[display_errors] = off
+php_value[log_errors] = on
+php_value[upload_max_filesize] = 64M
+php_value[post_max_size] = 64M
+php_value[memory_limit] = 512M --> hwat???
+```
 
 ## References
 [^1]: https://itsfoss.com/alpine-linux-virtualbox/
