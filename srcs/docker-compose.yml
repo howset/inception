@@ -1,0 +1,63 @@
+
+services:
+  mariadb:
+    image: mdb:inception
+    build:
+      context: requirements/mariadb/
+      dockerfile: Dockerfile
+    container_name: mdb_cont
+    volumes:
+      - mdb_data:/var/lib/mysql
+    environment:
+      DATABASE_NAME: MDB_NAME666
+      DATABASE_USER_NAME: MDB_USER666
+      DATABASE_USER_PASSWORD: MDB_PASSWD666
+    networks:
+      - inception
+    restart: unless-stopped
+
+  wordpress:
+    image: wp:inception
+    build:
+      context: requirements/wordpress/
+      dockerfile: Dockerfile
+    container_name: wp_cont
+    volumes:
+      - wp_data:/var/www/html
+    environment:
+      DATABASE_NAME: MDB_NAME666
+      DATABASE_USER_NAME: MDB_USER666
+      DATABASE_USER_PASSWORD: MDB_PASSWD666
+      DATABASE_HOST: mariadb
+    networks:
+      - inception
+    depends_on:
+      - mariadb
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:inception
+    build:
+      context: requirements/nginx/
+      dockerfile: Dockerfile
+    container_name: nginx_cont
+    volumes:
+      - wp_data:/var/www/html
+    networks:
+      - inception
+    depends_on:
+      - wordpress
+      - mariadb
+    restart: unless-stopped
+    ports:
+      - "443:443"
+
+volumes:
+  mdb_data:
+    driver: local
+  wp_data:
+    driver: local
+
+networks:
+  inception:
+    driver: bridge

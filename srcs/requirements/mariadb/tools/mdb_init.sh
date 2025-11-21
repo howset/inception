@@ -1,10 +1,21 @@
 #!/bin/bash
 
+RED='\033[0;31m'
+GRE='\033[0;32m'
+YEL='\033[1;33m'
+BLU='\033[0;34m'
+MAG='\033[0;35m'
+CYA='\033[0;36m'
+RES='\033[0m'
+
 #exit immediately if any command fails, prevents the container from silently continuing if something breaks
 set -e
 
+echo -e "${CYA}Running mdb_init.sh${RES}"
+
 start_mdb_bg()
 {
+	echo -e "${MAG}Installing/running mdb daemon${RES}"
 	if [ ! -d /var/lib/mysql/mysql ]; then #create database
 		mariadb-install-db --user=mysql --datadir=/var/lib/mysql
 	fi
@@ -13,16 +24,19 @@ start_mdb_bg()
 	chmod u=rwx,g=,o= /run/mysqld #set permissions so only owner mysql can read/write/execute in dir to improve security.
 	mariadbd --user=mysql --datadir=/var/lib/mysql --skip-networking=0 & #mdb server daemon in bg, specify user, datadir, ensure networking is enabled
 	sleep 5
+	echo -e "${GRE}Installing/running mdb daemon...Done!${RES}"
 }
 
 #reproduce mysql_secure_installation noninteractively
 apply_msi()
 {
+	echo -e "${MAG}Applying mysql_secure_installation manually${RES}"
 	mariadb -e "DELETE FROM mysql.user WHERE User='';" #remove anon users
 	mariadb -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" #allow only localhost/root access
 	mariadb -e "DROP DATABASE IF EXISTS test;" #remove default test db
 	mariadb -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" #Remove privileges related to it
 	mariadb -e "FLUSH PRIVILEGES;" #apply immediately
+	echo -e "${GRE}Applying mysql_secure_installation manually...Done!${RES}"
 }
 
 setup_db()
@@ -31,10 +45,12 @@ setup_db()
 	local DATABASE_USER_NAME=MDB_USER666
 	local DATABASE_USER_PASSWORD=MDB_PASSWD666
 
+	echo -e "${MAG}Setting up the database${RES}"
 	mariadb -e "CREATE DATABASE IF NOT EXISTS $DATABASE_NAME;" #create db
 	mariadb -e "CREATE USER IF NOT EXISTS '$DATABASE_USER_NAME'@'%' IDENTIFIED BY '$DATABASE_USER_PASSWORD';" #adds new user with password, allowing connection from any host ('%')
 	mariadb -e "GRANT ALL ON $DATABASE_NAME.* TO '$DATABASE_USER_NAME'@'%';" #give full privilege to user
 	mariadb -e "FLUSH PRIVILEGES;"
+	echo -e "${GRE}Setting up the database...Done!${RES}"
 }
 
 start_mdb_bg
@@ -42,11 +58,11 @@ apply_msi
 setup_db
 
 # stop temporary background server
-#if pgrep mariadbd >/dev/null 2>&1; then #check if mdb is running
-#	mysqladmin --user=root shutdown 2>/dev/null || pkill mariadbd #stop nicely or kill it
-#	while pgrep mariadbd >/dev/null 2>&1; do sleep 0.1; done #waits until process fully exits
-#fi
-pkill -f "mariadbd.*skip-networking" || true
+pkill -f mariadbd || true
+sleep 1
+
+echo -e "${GRE}MariaDB setup complete!${RES}"
 
 # Start MariaDB server in the foreground (PID 1)
-exec mariadbd --user=mysql --datadir=/var/lib/mysql "$@"
+exec mariadbd --user=mysql --datadir=/var/lib/mysql
+# exec "$@"
