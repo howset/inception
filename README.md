@@ -325,19 +325,19 @@ RUN apk update && apk add \
 	bash
 
 #init script
-COPY srcs/requirements/mariadb/tools/mdb_init.sh /usr/local/bin/mdb_init.sh
+COPY ./tools/mdb_init.sh /usr/local/bin/mdb_init.sh
 RUN chmod +x /usr/local/bin/mdb_init.sh
 
 #mdb config
-COPY srcs/requirements/mariadb/conf/mdb.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
-RUN chmod u=rw,go=r /etc/mysql/mariadb.conf.d/50-server.cnf
+COPY ./conf/mdb.cnf /etc/my.cnf.d/mariadb-server.cnf
+RUN chmod u=rw,go=r /etc/my.cnf.d/mariadb-server.cnf
 
 #expose port (for WP connection)
 EXPOSE 3306
 
 #use the init script as entrypoint
 ENTRYPOINT ["/usr/local/bin/mdb_init.sh"]
-CMD ["mariadbd", "--user=mysql", "--datadir=/var/lib/mysql"]
+#CMD ["mariadbd", "--user=mysql", "--datadir=/var/lib/mysql"]
 ```
 
 #### Entrypoint script
@@ -396,20 +396,29 @@ start_mdb_bg
 apply_msi
 setup_db
 
-pkill -f "mariadbd.*skip-networking" || true
+# stop temporary background server
+pkill -f mariadbd || true
+sleep 1
 
 # Start MariaDB server in the foreground (PID 1)
-exec "$@"
+exec mariadbd --user=mysql --datadir=/var/lib/mysql
+# exec "$@"
+
 ```
 
 #### Configs
-The config file consist of the allowed connections (all --> bind-address 0.0.0.0) and then put (copied) to the proper location (by the dockerfile). 
-Many configuration options can be passed as flags to mariadbd[^15].
+- The config file consist of the allowed connections (all --> bind-address 0.0.0.0) and then put (copied) to the proper location (by the dockerfile). 
+- Many configuration options can be passed as flags to mariadbd[^15].
+- The location of the config file in alpine is not the same as in debian.
 
 ```
 [mariadbd]
 #allow all connections
 bind-address			= 0.0.0.0
+#port = 3306 #unnecessary?
+#datadir = /var/lib/mysql #unnecessary?
+#socket = /run/mysqld/mysqld.sock #unnecessary?
+#skip-networking = 0 #unnecessary?
 ```
 
 ### Nginx
@@ -429,19 +438,18 @@ RUN apk update && apk add \
 	bash
 
 #init script
-COPY srcs/requirements/nginx/tools/nginx_init.sh /usr/local/bin/nginx_init.sh
+COPY ./tools/nginx_init.sh /usr/local/bin/nginx_init.sh
 RUN chmod +x /usr/local/bin/nginx_init.sh
 
 #nginx config
-COPY srcs/requirements/nginx/conf/nginx.cnf /etc/nginx/http.d/inception.conf
+COPY ./conf/nginx.cnf /etc/nginx/http.d/nginx.conf
 
 #expose port (HTTPS)
 EXPOSE 443
 
 #use the init script as entrypoint
 ENTRYPOINT ["/usr/local/bin/nginx_init.sh"]
-CMD [ "nginx", "-g", "daemon off;" ]
-
+# CMD [ "nginx", "-g", "daemon off;" ]
 ```
 
 #### Entrypoint script
@@ -488,11 +496,9 @@ set_permissions
 exec "$@"
 ```
 
-
 #### Configs[^16]
-The default config file[^13][^14].
-
-The config file `nginx.cnf` is __not__ copied to the docker container (overwrite) in `/etc/nginx/nginx.conf` because that is the default one, and in the last line _virtual hosts configs includes_ points to `/etc/nginx/http.d/*.conf`.
+- The default config file[^13][^14].
+- The config file `nginx.cnf` is __not__ copied to the docker container (overwrite) in `/etc/nginx/nginx.conf` because that is the default one, and in the last line _virtual hosts configs includes_ points to `/etc/nginx/http.d/*.conf`.
 
 ```
 server {
@@ -523,6 +529,8 @@ server {
 
 ### Wordpress
 #### Dockerfile
+- install lots of packages because alpine (debian only installs sevreal i think).
+- getting WP-CLI[^17] to install wp in the script.
 ```docker
 # Base image
 FROM alpine:3.21.1
@@ -530,93 +538,134 @@ FROM alpine:3.21.1
 
 #install php-fpm & utils
 RUN apk update && apk add \
-	php82 \
-	php82-fpm \
-	php82-mysqli \
-	php82-json \
-	php82-opcache \
-	php82-gd \
-	php82-pecl-imagick \
-	php82-curl \
-	php82-xml \
-	php82-xmlreader \
-	php82-simplexml \
-	php82-zip \
-	php82-dom \
-	php82-iconv \ 
-	php82-mbstring \
-	php82-phar \
-	php82-session \
-	php82-openssl \
-	php82-tokenizer \
-	php82-fileinfo \
+	php83 \
+	php83-fpm \
+	php83-mysqli \
+	php83-json \
+	php83-opcache \
+	php83-gd \
+	php83-pecl-imagick \
+	php83-curl \
+	php83-xml \
+	php83-xmlreader \
+	php83-simplexml \
+	php83-zip \
+	php83-dom \
+	php83-iconv \ 
+	php83-mbstring \
+	php83-phar \
+	php83-session \
+	php83-openssl \
+	php83-tokenizer \
+	php83-fileinfo \
 	openssl \
 	imagemagick \
 	icu-data-full \
 	mariadb-client \
-	curl tar\
+	curl tar nano\
 	bash
 
-#install wp
+#get wp-cli
 RUN curl -o /usr/local/bin/wp-cli.phar \
 	https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
 	chmod +x /usr/local/bin/wp-cli.phar && \
 	mv /usr/local/bin/wp-cli.phar /usr/local/bin/wp
 
 #init script
-COPY srcs/requirements/wordpress/tools/wp_init.sh /usr/local/bin/wp_init.sh
+COPY ./tools/wp_init.sh /usr/local/bin/wp_init.sh
 RUN chmod +x /usr/local/bin/wp_init.sh
 
 #wp config
-COPY srcs/requirements/wordpress/conf/wp.conf /etc/php82/php-fpm.d/www.conf
+COPY ./conf/wp.conf /etc/php83/php-fpm.d/www.conf
 
 #expose port
 EXPOSE 9000
 
-#ENTRYPOINT ["/usr/local/bin/wp_init.sh"]
-#CMD ["php-fpm82", "-F"]
-ENTRYPOINT ["php-fpm82", "-F"]
+ENTRYPOINT ["/usr/local/bin/wp_init.sh"]
+# CMD ["php-fpm83", "-F"]
+#ENTRYPOINT ["php-fpm83", "-F"]
+#ENTRYPOINT ["tail", "-f", "/dev/null"]
 ```
 
 #### Entrypoint script
+- wp is installed in 4 steps (via wp-cli)[^18]:
+	1. `wp core download` somehow i need to change memory_limit first, otherwise error :( .
+	2. `wp config create` generate config file (`/var/www/html/wp-config.php`).
+	3. `wp db create` create db -- skipped because db is handled by mdb_container.
+	4. `wp core install` install it.
+
 ```bash
 #!/bin/bash
 
 #exit immediately if any command fails, prevents the container from silently continuing if something breaks
 set -e
 
-# Wait for MariaDB to be ready
-#echo "Waiting for MariaDB to be ready..."
-#while ! nc -z mariadb 3306; do
-#    sleep 1
-#done
-#echo "MariaDB is ready!"
+#wait for mdb to be ready
+echo "Waiting for MariaDB..."
+while ! nc -z mariadb 3306; do
+	sleep 1
+done
+echo "MariaDB is ready!"
 
-# Configure WordPress if wp-config.php doesn't exist
-if [ ! -f /var/www/html/wp-config.php ]; then
-	echo "Configuring WordPress..."
-	/usr/local/bin/wp-cli.phar config create \
-		--dbname="${DATABASE_NAME:-MDB_NAME666}" \
-		--dbuser="${DATABASE_USER_NAME:-MDB_USER666}" \
-		--dbpass="${DATABASE_USER_PASSWORD:-MDB_PASSWD666}" \
-		--dbhost="mariadb" \
-		--path=/var/www/html
+#deal with wordpress
+#change memory limit
+sed -i 's/^memory_limit = .*/memory_limit = 256M/' /etc/php83/php.ini
+
+#run core download (no wp-config.php yet)
+if [ ! -f /var/www/html/wp-load.php ]; then
+	echo "Downloading WordPress..."
+	wp core download --allow-root --path=/var/www/html/
+else
+	echo "WordPress already downloaded"
 fi
 
-# Set permissions
-#chown -R nobody:nobody /var/www/html
-#chmod -R 755 /var/www/html
+#generate config file
+if [ ! -f /var/www/html/wp-config.php ]; then
+	echo "Creating wp-config.php..."
+	wp config create --allow-root \
+		--path=/var/www/html/ \
+		--dbname="MDB_NAME666" \
+		--dbuser="MDB_USER666" \
+		--dbpass="MDB_PASSWD666" \
+		--dbhost="mariadb"
+else
+	echo "wp-config.php already exists"
+fi
 
-# Start PHP-FPM in foreground
-exec "$@"
+#install wp
+if ! wp core is-installed --allow-root --path=/var/www/html 2>/dev/null; then
+	echo "Installing WordPress..."
+	wp core install --allow-root \
+		--path=/var/www/html/ \
+		--url="hsetyamu.42.fr" \
+		--title="Inception" \
+		--admin_user="WP_ADMIN_USER" \
+		--admin_password="WP_ADMIN_PASSWORD" \
+		--admin_email="wp@goo.co" \
+		--skip-email
+else
+	echo "WordPress already installed"
+fi
+
+#set permissions
+chown -R nobody:nobody /var/www/html
+chmod -R u+rwx,go+rx /var/www/html
+
+echo "WordPress setup complete!"
+
+#start PHP-FPM in foreground
+exec php-fpm83 -F
+# exec "$@"
 ```
 
 #### Configs
+- overwrite www.conf (pool configuration files) that is read by default by PHP-FPM as defined in `/etc/php82/php-fpm.conf`.
+
 ```
 [www]
 ; PHP-FPM pool name
 listen = 0.0.0.0:9000
-listen.allowed_clients = 127.0.0.1, nginx
+;listen.allowed_clients = 127.0.0.1,nginx
 
 ; User and group
 user = nobody
@@ -642,29 +691,74 @@ php_value[display_errors] = off
 php_value[log_errors] = on
 php_value[upload_max_filesize] = 64M
 php_value[post_max_size] = 64M
-php_value[memory_limit] = 512M --> hwat???
+php_value[memory_limit] = 512M
 ```
 
-## References
-[^1]: https://itsfoss.com/alpine-linux-virtualbox/
-[^2]: https://krython.com/post/installing-alpine-linux-in-virtualbox/
-[^3]: https://wiki.alpinelinux.org/wiki/Kernels
-[^4]: https://wiki.alpinelinux.org/wiki/Xfce
-[^5]: https://wiki.alpinelinux.org/wiki/VirtualBox_shared_folders
-[^6]: https://dockerlabs.collabnix.com/docker/cheatsheet/
-[^7]: https://dev.mysql.com/doc/refman/8.4/en/mysql-secure-installation.html
-[^8]: https://mariadb.com/docs/server/server-management/automated-mariadb-deployment-and-administration/docker-and-mariadb/creating-a-custom-container-image
-[^9]: https://wiki.alpinelinux.org/wiki/MariaDB
-[^10]: https://mariadb.com/docs/server/clients-and-utilities/deployment-tools/mariadb-install-db
-[^11]: https://mariadb.com/docs/server/clients-and-utilities/deployment-tools/mariadb-secure-installation
-[^12]: https://gallery.ecr.aws/docker/library/alpine
-[^13]: https://wiki.alpinelinux.org/wiki/Nginx
-[^14]: https://hub.docker.com/_/nginx
-[^15]: https://hub.docker.com/_/mariadb
-[^16]: https://nginx.org/en/docs/beginners_guide.html
-https://wiki.alpinelinux.org/wiki/WordPress
-https://hub.docker.com/_/wordpress
-https://make.wordpress.org/cli/handbook/guides/installing/
+### Notes
+- I decided to just use the initsrcipt on each dockerfile as the ENTRYPOINT and ditched CMD (along with `exec "$@"` in the script) because although that works fine for mdb and nginx but wp the PID 1 would just be the script :
+	```bash
+	~/workspace/Inception $ docker exec mdb_container ps aux
+	PID		USER	TIME	COMMAND
+	1		mysql	0:00	mariadbd --user=mysql --datadir=/var/lib/mysql
+	~/workspace/Inception $ docker exec nginx_container ps aux
+	PID		USER	TIME	COMMAND
+	1		root	0:00	nginx: master process nginx -g daemon off;
+	~/workspace/Inception $ docker exec wp_container ps aux
+	PID		USER	TIME	COMMAND
+	1		root	0:00	{wp_init.sh} /bin/bash /usr/local/bin/wp_init.sh php-fpm83 -F
+	```
+- So i just use the `exec` the command directly to run them to the foreground:
+	```bash
+	~/workspace/Inception $ docker exec mdb_container ps aux
+	PID		USER	TIME	COMMAND
+	1		mysql	0:00	mariadbd --user=mysql --datadir=/var/lib/mysql
+	~/workspace/Inception $ docker exec nginx_container ps aux
+	PID		USER	TIME	COMMAND
+	1		root	0:00	nginx: master process nginx -g daemon off;
+	~/workspace/Inception $ docker exec wp_container ps aux
+	PID		USER	TIME	COMMAND
+	1		root	0:00	{php-fpm83} php-fpm: master process (/etc/php83/php-fpm.conf)
+	```
+
+## Glossary
+🐳 Docker & Containers
+- __Docker__ A platform that runs applications inside isolated environments called containers.
+- __Container__ A lightweight, isolated process that contains its own filesystem, packages, and configuration.
+- __Docker Image__ A read-only blueprint used to create containers. Built from a Dockerfile.
+- __Dockerfile__ A script that defines how to build a Docker image (what OS, what packages, what commands).
+- __PID 1__ The “main” process inside a Docker container. If PID 1 exits → the container stops.
+- __Bind mount__ A host folder mounted directly into a container.
+- __Volume__ A persistent storage area created and managed by Docker.
+
+🕸️ Networking & Services
+- __Entry Point__ The container that receives all external traffic (must be NGINX in Inception).
+- __Reverse Proxy__ A server that receives requests and forwards them to another internal service (NGINX forwards PHP requests to PHP-FPM).
+- __TLS/SSL__ _Transport Layer Security/Secure Sockets Layer_. Encryption technology for HTTPS communication.
+- __Ports__ Channels used for network communication.
+- __Local IP__ Your machine’s internal IP, used for local DNS mapping.
+
+🌐 NGINX / FastCGI / PHP
+- __NGINX__ A high-performance web server used as the only entry point in the project.
+- __FastCGI__ _Common Gateway Interface_. A protocol that lets NGINX communicate with a backend like PHP-FPM.
+- __PHP-FPM__ _FastCGI Process Manager_. Runs PHP scripts in the background and communicates with NGINX.
+- __php-fpm socket__ A special file for communication between NGINX and PHP-FPM, e.g.: `/var/run/php/php8.2-fpm.sock`
+
+🛢️ MariaDB / MySQL
+- __MariaDB__ It’s a drop-in replacement for MySQL.
+- __mysqld / mariadbd__ The actual database server daemon running in the background.
+- __mysql / mariadb (client)__ The command-line program used to interact with the server.
+
+🔐 Security & Secrets
+- __Environment variables__ Variables injected into containers at runtime via .env or docker-compose. Used for non-secret values.
+- __Docker Secrets__ Secure encrypted storage for sensitive data (passwords). Mounted into /run/secrets/....
+- __.env file__ A file storing environment variables used by docker-compose.
+
+🗂️ Linux / Filesystems / Tools
+- __Alpine Linux__ A lightweight Linux distribution often used in Docker images.
+- __BusyBox__ A minimal collection of Unix utilities (ls, cp, mv…) found in Alpine.
+- __OpenRC__ The init system used by Alpine Linux (not used in Inception; avoid it).
+- __Daemon__ A background service (like MariaDB, PHP-FPM).
+- __exec (Bash)__ Replaces the current process with a new one. Used to make the final server process become PID 1.
 
 ## Plan
 
@@ -694,3 +788,25 @@ https://make.wordpress.org/cli/handbook/guides/installing/
 - Check data persists after container restart
 
 Priority: Start with docker-compose to tie everything together, then build/test the WordPress container.
+
+## References
+[^1]: https://itsfoss.com/alpine-linux-virtualbox/
+[^2]: https://krython.com/post/installing-alpine-linux-in-virtualbox/
+[^3]: https://wiki.alpinelinux.org/wiki/Kernels
+[^4]: https://wiki.alpinelinux.org/wiki/Xfce
+[^5]: https://wiki.alpinelinux.org/wiki/VirtualBox_shared_folders
+[^6]: https://dockerlabs.collabnix.com/docker/cheatsheet/
+[^7]: https://dev.mysql.com/doc/refman/8.4/en/mysql-secure-installation.html
+[^8]: https://mariadb.com/docs/server/server-management/automated-mariadb-deployment-and-administration/docker-and-mariadb/creating-a-custom-container-image
+[^9]: https://wiki.alpinelinux.org/wiki/MariaDB
+[^10]: https://mariadb.com/docs/server/clients-and-utilities/deployment-tools/mariadb-install-db
+[^11]: https://mariadb.com/docs/server/clients-and-utilities/deployment-tools/mariadb-secure-installation
+[^12]: https://gallery.ecr.aws/docker/library/alpine
+[^13]: https://wiki.alpinelinux.org/wiki/Nginx
+[^14]: https://hub.docker.com/_/nginx
+[^15]: https://hub.docker.com/_/mariadb
+[^16]: https://nginx.org/en/docs/beginners_guide.html
+[^17]: https://make.wordpress.org/cli/handbook/guides/installing/
+[^18]: https://make.wordpress.org/cli/handbook/how-to/how-to-install/
+https://wiki.alpinelinux.org/wiki/WordPress
+https://hub.docker.com/_/wordpress
