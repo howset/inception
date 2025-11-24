@@ -329,15 +329,14 @@ FROM alpine:3.21.1
 RUN apk update && apk add \
 	mariadb \
 	mariadb-client \
-	bash
+	nano
 
 #init script
 COPY ./tools/mdb_init.sh /usr/local/bin/mdb_init.sh
 RUN chmod +x /usr/local/bin/mdb_init.sh
 
-#mdb config
+#mdb config, overwrite it
 COPY ./conf/mdb.cnf /etc/my.cnf.d/mariadb-server.cnf
-RUN chmod u=rw,go=r /etc/my.cnf.d/mariadb-server.cnf
 
 #expose port (for WP connection)
 EXPOSE 3306
@@ -360,7 +359,7 @@ The flow is as follows:
 - then stops the daemon and `exec` mariadb as foreground process.
 
 ```bash
-#!/bin/bash
+#!/bin/sh
 
 RED='\033[0;31m'
 GRE='\033[0;32m'
@@ -403,14 +402,11 @@ apply_msi()
 
 setup_db()
 {
-	local DATABASE_NAME=MDB_NAME666
-	local DATABASE_USER_NAME=MDB_USER666
-	local DATABASE_USER_PASSWORD=MDB_PASSWD666
-
+	local DB_USER_PW=$(cat /run/secrets/DB_USER_PW)
 	echo -e "${MAG}Setting up the database${RES}"
-	mariadb -e "CREATE DATABASE IF NOT EXISTS $DATABASE_NAME;" #create db
-	mariadb -e "CREATE USER IF NOT EXISTS '$DATABASE_USER_NAME'@'%' IDENTIFIED BY '$DATABASE_USER_PASSWORD';" #adds new user with password, allowing connection from any host ('%')
-	mariadb -e "GRANT ALL ON $DATABASE_NAME.* TO '$DATABASE_USER_NAME'@'%';" #give full privilege to user
+	mariadb -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};" #create db
+	mariadb -e "CREATE USER IF NOT EXISTS '${DB_USER_NAME}'@'%' IDENTIFIED BY '$DB_USER_PW';" #adds new user with password, allowing connection from any host ('%')
+	mariadb -e "GRANT ALL ON ${DB_NAME}.* TO '${DB_USER_NAME}'@'%';" #give full privilege to user
 	mariadb -e "FLUSH PRIVILEGES;"
 	echo -e "${GRE}Setting up the database...Done!${RES}"
 }
@@ -428,8 +424,6 @@ echo -e "${GRE}MariaDB setup complete!${RES}"
 # Start MariaDB server in the foreground (PID 1)
 exec mariadbd --user=mysql --datadir=/var/lib/mysql
 # exec "$@"
-
-
 ```
 
 #### Configs
@@ -461,27 +455,27 @@ FROM alpine:3.21.1
 RUN apk update && apk add \
 	nginx \
 	openssl \
-	bash
+	nano curl
 
 #init script
 COPY ./tools/nginx_init.sh /usr/local/bin/nginx_init.sh
 RUN chmod +x /usr/local/bin/nginx_init.sh
 
-#nginx config
-COPY ./conf/nginx.cnf /etc/nginx/http.d/nginx.conf
+#nginx config, NOT overwrite
+COPY ./conf/nginx.cnf /etc/nginx/http.d/secure.conf
 
-#expose port (HTTPS)
-EXPOSE 443
+#expose port (none here, because it's just gonna be internal. public exposure in docker-compose)
 
 #use the init script as entrypoint
 ENTRYPOINT ["/usr/local/bin/nginx_init.sh"]
 # CMD [ "nginx", "-g", "daemon off;" ]
+
 ```
 
 #### Entrypoint script
 Sets up SSL?
 ```bash
-#!/bin/bash
+#!/bin/sh
 
 RED='\033[0;31m'
 GRE='\033[0;32m'
@@ -506,16 +500,25 @@ create_dirs()
 }
 
 #generate self-signed SSL certificate if it doesn't exist
+# openssl req \ OpenSSL certificate request utility
+# 		-x509 \ output a self-signed certificate instead of a certificate signing request (CSR)
+# 		-newkey rsa:4096 \ generates a new RSA private key with 4096 bits of entropy
+# 		-keyout /etc/nginx/ssl/server.key \ where to save the private key, must be secret and secure
+# 		-out /etc/nginx/ssl/server.crt \ where to save the certificate, public cert that is sent to clients during the SSL handshake
+# 		-days 365 \ certificate validity 
+# 		-nodes \ create unencrypted private key. Otherwise, a passphrase would be prompted every time Nginx starts
+# 		-subj "/C=DE/ST=Berlin/L=Berlin/O=42/CN=localhost" certificate subject information
 generate_ss_ssl()
 {
 	if [ ! -f /etc/nginx/ssl/server.crt ]; then
-		openssl req -x509 \
+		openssl req \
+			-x509 \
 			-newkey rsa:4096 \
 			-keyout /etc/nginx/ssl/server.key \
 			-out /etc/nginx/ssl/server.crt \
 			-days 365 \
 			-nodes \
-			-subj "/C=DE/ST=Berlin/L=Berlin/O=42/CN=localhost"
+			-subj "/C=DE/ST=Berlin/L=Berlin/O=42/CN=hsetyamu.42.fr"
 	fi
 }
 
@@ -545,28 +548,52 @@ exec nginx -g "daemon off;"
 
 ```
 server {
-	#port to listen (only 443) in ipv4 & 6
+	#port to listen (443) in ipv4 & 6
 	listen	443 ssl;
 	listen	[::]:443 ssl;
 
 	#which domain to respond
-	server_name hsetyamu.42.fr;
+	server_name hsetyamu.42.fr localhost;
 
 	#SSL certs-key & TLS
 	ssl_certificate_key			/etc/nginx/ssl/server.key;
 	ssl_certificate				/etc/nginx/ssl/server.crt;
 	ssl_protocols				TLSv1.3;
-	ssl_ciphers					HIGH:!aNULL:!MD5; #whitelist secure methods
+	ssl_ciphers					HIGH:!aNULL:!MD5; #whitelist secure methods & blacklist insecure ones
 	ssl_prefer_server_ciphers	on; #prioritize this over client's
 
 	#root directory & index file
 	root	/var/www/html;
 	index	index.html index.php;
 
-	#match every possible request (/) & check if file exists, if not index at a directory, if not found then 404
+	#match every possible request (/) & check if file exists, if not then index at a directory, if still not found then 404
 	location / {
 		try_files	$uri $uri/ =404;
 	}
+
+	# Directive for every request that finishes with .php
+	location ~ \.php$ {
+		# Check if php file exists; if not, error 404 not found
+		try_files	$uri =404;
+
+		# Pass the .php files to the FPM listening on this address
+		fastcgi_pass	wordpress:9000;
+
+		 # Set the script name
+		fastcgi_index	index.php;
+
+		# Include the necessary variables
+		include			fastcgi_params;
+		fastcgi_param	SCRIPT_FILENAME $document_root$fastcgi_script_name;
+	}
+}
+
+#redirect http to https (because alpine opens 80 as default in /etc/nginx/http.d/default.conf)
+server {
+	listen 80;
+	listen [::]:80;
+	server_name hsetyamu.42.fr localhost;
+	return 301 https://$server_name$request_uri;
 }
 ```
 
@@ -605,8 +632,7 @@ RUN apk update && apk add \
 	imagemagick \
 	icu-data-full \
 	mariadb-client \
-	curl tar nano\
-	bash
+	curl nano
 
 #get wp-cli
 RUN curl -o /usr/local/bin/wp-cli.phar \
@@ -618,7 +644,7 @@ RUN curl -o /usr/local/bin/wp-cli.phar \
 COPY ./tools/wp_init.sh /usr/local/bin/wp_init.sh
 RUN chmod +x /usr/local/bin/wp_init.sh
 
-#wp config
+#wp config, overwrite it
 COPY ./conf/wp.conf /etc/php83/php-fpm.d/www.conf
 
 #expose port
@@ -627,7 +653,6 @@ EXPOSE 9000
 ENTRYPOINT ["/usr/local/bin/wp_init.sh"]
 # CMD ["php-fpm83", "-F"]
 #ENTRYPOINT ["php-fpm83", "-F"]
-#ENTRYPOINT ["tail", "-f", "/dev/null"]
 ```
 
 #### Entrypoint script
@@ -639,7 +664,7 @@ ENTRYPOINT ["/usr/local/bin/wp_init.sh"]
 	4. `wp core install` install wp.
 
 ```bash
-#!/bin/bash
+#!/bin/sh
 
 RED='\033[0;31m'
 GRE='\033[0;32m'
@@ -654,17 +679,6 @@ set -e
 
 echo -e "${CYA}Running wp_init.sh${RES}"
 
-wait_mdb()
-{
-	#wait for mdb to be ready
-	echo -e "${MAG}Waiting for MariaDB...${RES}"
-	while ! nc -z mariadb 3306; do
-		sleep 1
-	done
-	echo -e "${GRE}MariaDB is ready!${RES}"
-}
-
-#deal with wordpress
 #change memory limit
 change_limit()
 {
@@ -686,14 +700,15 @@ wp_core_download()
 #generate config file
 wp_config_create()
 {
+	local DB_USER_PW=$(cat /run/secrets/DB_USER_PW)
 	if [ ! -f /var/www/html/wp-config.php ]; then
 		echo -e "${MAG}Creating wp-config.php...${RES}"
 		wp config create --allow-root \
 			--path=/var/www/html/ \
-			--dbname="MDB_NAME666" \
-			--dbuser="MDB_USER666" \
-			--dbpass="MDB_PASSWD666" \
-			--dbhost="mariadb"
+			--dbname="${DB_NAME}" \
+			--dbuser="${DB_USER_NAME}" \
+			--dbpass="$DB_USER_PW" \
+			--dbhost="${DB_HOST}"
 		echo -e "${GRE}Creating wp-config.php...Done!${RES}"
 	else
 		echo -e "${YEL}wp-config.php already exists${RES}"
@@ -703,15 +718,16 @@ wp_config_create()
 #install wp
 wp_core_install()
 {
+	local WP_ADM_PW=$(cat /run/secrets/WP_ADM_PW)
 	if ! wp core is-installed --allow-root --path=/var/www/html 2>/dev/null; then
 		echo -e "${MAG}Installing WordPress...${RES}"
 		wp core install --allow-root \
 			--path=/var/www/html/ \
 			--url="hsetyamu.42.fr" \
 			--title="Inception" \
-			--admin_user="WP_ADMIN_USER" \
-			--admin_password="WP_ADMIN_PASSWORD" \
-			--admin_email="wp@goo.co" \
+			--admin_user="${WP_ADM_USER}" \
+			--admin_password="$WP_ADM_PW" \
+			--admin_email="${WP_ADM_EMAIL}" \
 			--skip-email
 		echo -e "${GRE}Installing WordPress...Done!${RES}"
 	else
@@ -728,7 +744,6 @@ set_permissions()
 	echo -e "${GRE}Setting permissions...Done!${RES}"
 }
 
-wait_mdb
 change_limit
 wp_core_download
 wp_config_create
