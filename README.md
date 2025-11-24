@@ -13,6 +13,7 @@
 		- [Setup a shared folder](#setup-a-shared-folder)
 		- [Customize the DE](#customize-the-de)
 		- [Utilities: VSCode remote SSH, git, etc](#utilities-vscode-remote-ssh-git-etc)
+		- [To open the page](#to-open-the-page)
 - [Docker containers](#docker-containers)
 	- [Mariadb](#mariadb)
 		- [Dockerfile](#dockerfile)
@@ -26,6 +27,9 @@
 		- [Dockerfile](#dockerfile-2)
 		- [Entrypoint script](#entrypoint-script-2)
 		- [Configs](#configs-2)
+	- [Notes](#notes)
+- [Glossary](#glossary)
+- [Plan](#plan)
 - [References](#references)
 
 ## Starting points
@@ -263,6 +267,9 @@ Reqs:
 	$> sudo rc-service sshd status
 	```
 - Install git if necessary (along with the ssh keys if necessary).
+
+#### To open the page
+- dont forget to open /etc/hosts and add [username].42.fr to open the page using a browser in the docker host (VM).
 
 ## Docker containers
 - The base image can basically be from anything, either from debian:bookworm or alpine:3.21.1 as long as the kernel is the same (linux), the difference is the size of the image using alpine ended up smaller than debian (~200 MB vs ~500 MB), and some adjustments also has to be made due to some differences between the systems (e.g. alpine has no bash by default).
@@ -534,7 +541,7 @@ exec nginx -g "daemon off;"
 
 #### Configs[^16]
 - The default config file[^13][^14].
-- The config file `nginx.cnf` is __not__ copied to the docker container (overwrite) in `/etc/nginx/nginx.conf` because that is the default one, and in the last line _virtual hosts configs includes_ points to `/etc/nginx/http.d/*.conf`.
+- The config file `nginx.cnf` is __not__ copied to the docker container (overwrite) in `/etc/nginx/nginx.conf` because that is the parent one, and in the last line _virtual hosts configs includes_ points to `/etc/nginx/http.d/*.conf`.
 
 ```
 server {
@@ -624,11 +631,12 @@ ENTRYPOINT ["/usr/local/bin/wp_init.sh"]
 ```
 
 #### Entrypoint script
+- the idea here is to wait for mdb to finish setting up, so the set -e (shell error is encountered) comes handy here so that if mdb container has not finished setting up, then connection can not be established (yet), the script will exit, then docker compose will restart it. Again and again until mdb container is finished, and connection can be established.
 - wp is installed in 4 steps (via wp-cli)[^18]:
-	1. `wp core download` somehow i need to change memory_limit first, otherwise error :( .
+	1. `wp core download` somehow i need to change memory_limit first, otherwise cant download.
 	2. `wp config create` generate config file (`/var/www/html/wp-config.php`).
 	3. `wp db create` create db -- skipped because db is handled by mdb_container.
-	4. `wp core install` install it.
+	4. `wp core install` install wp.
 
 ```bash
 #!/bin/bash
@@ -769,7 +777,8 @@ php_value[upload_max_filesize] = 64M
 php_value[post_max_size] = 64M
 php_value[memory_limit] = 512M
 ```
-
+### Docker Compose
+Secrets[^19]
 ### Notes
 - I decided to just use the initsrcipt on each dockerfile as the ENTRYPOINT and ditched CMD (along with `exec "$@"` in the script) because although that works fine for mdb and nginx but wp the PID 1 would just be the script :
 	```bash
@@ -842,15 +851,10 @@ php_value[memory_limit] = 512M
 - Serve static files or reverse proxy
 
 2. Create a WordPress container
-- Install PHP-FPM
-- Install WordPress core files
 - Configure to connect to MariaDB using env vars
 - Set up proper file permissions
 
 3. Use docker-compose to orchestrate all services
-- Define all three services (MariaDB, Nginx, WordPress)
-- Set up networking between containers
-- Define volumes for data persistence
 - Pass environment variables to each service
 
 4. Add volume management
@@ -886,3 +890,4 @@ Priority: Start with docker-compose to tie everything together, then build/test 
 [^18]: https://make.wordpress.org/cli/handbook/how-to/how-to-install/
 https://wiki.alpinelinux.org/wiki/WordPress
 https://hub.docker.com/_/wordpress
+[^19]: https://serverfault.com/a/936262
