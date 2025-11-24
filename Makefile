@@ -110,7 +110,6 @@ clean:
 	@echo -e "$(GRE)Containers cleaned!$(RES)"
 
 # Remove everything including images and volumes
-# Remove everything including images and volumes
 fclean: compose-clean
 	@echo -e "$(RED)Removing images and volumes...$(RES)"
 	-docker rmi $(MDB_IMAGE) 2>/dev/null || true
@@ -122,10 +121,8 @@ fclean: compose-clean
 	@echo -e "$(GRE)Full clean complete!$(RES)"
 
 # Rebuild everything
-re:
-	fclean all
-re-compose:
-	fclean all-compose
+re:	fclean all
+re-compose:	fclean all-compose
 
 # Execute bash in MariaDB container
 exec-mdb:

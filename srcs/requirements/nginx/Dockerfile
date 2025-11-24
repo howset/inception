@@ -6,17 +6,16 @@ FROM alpine:3.21.1
 RUN apk update && apk add \
 	nginx \
 	openssl \
-	bash
+	nano curl
 
 #init script
 COPY ./tools/nginx_init.sh /usr/local/bin/nginx_init.sh
 RUN chmod +x /usr/local/bin/nginx_init.sh
 
-#nginx config
-COPY ./conf/nginx.cnf /etc/nginx/http.d/nginx.conf
+#nginx config, NOT overwrite
+COPY ./conf/nginx.cnf /etc/nginx/http.d/secure.conf
 
-#expose port (HTTPS)
-EXPOSE 443
+#expose port (none here, because it's just gonna be internal. public exposure in docker-compose)
 
 #use the init script as entrypoint
 ENTRYPOINT ["/usr/local/bin/nginx_init.sh"]

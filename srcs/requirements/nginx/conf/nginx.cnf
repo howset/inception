@@ -1,10 +1,10 @@
 server {
-	#port to listen (only 443) in ipv4 & 6
+	#port to listen (443) in ipv4 & 6
 	listen	443 ssl;
 	listen	[::]:443 ssl;
 
 	#which domain to respond
-	server_name hsetyamu.42.fr;
+	server_name hsetyamu.42.fr localhost;
 
 	#SSL certs-key & TLS
 	ssl_certificate_key			/etc/nginx/ssl/server.key;
@@ -23,14 +23,26 @@ server {
 	}
 
 	# Directive for every request that finishes with .php
-#	location ~ \.php$ {
+	location ~ \.php$ {
 		# Check if php file exists; if not, error 404 not found
-#		try_files	$uri =404;
+		try_files	$uri =404;
 
 		# Pass the .php files to the FPM listening on this address
-#		fastcgi_pass	wordpress:9000;
+		fastcgi_pass	wordpress:9000;
+
+		 # Set the script name
+		fastcgi_index	index.php;
 
 		# Include the necessary variables
-#		include	fastcgi.conf;
-#	}
+		include			fastcgi_params;
+		fastcgi_param	SCRIPT_FILENAME $document_root$fastcgi_script_name;
+	}
+}
+
+#redirect http to https (because alpine opens 80 as default in /etc/nginx/http.d/default.conf)
+server {
+	listen 80;
+	listen [::]:80;
+	server_name hsetyamu.42.fr localhost;
+	return 301 https://$server_name$request_uri;
 }

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 RED='\033[0;31m'
 GRE='\033[0;32m'
@@ -23,16 +23,25 @@ create_dirs()
 }
 
 #generate self-signed SSL certificate if it doesn't exist
+# openssl req \ OpenSSL certificate request utility
+# 		-x509 \ output a self-signed certificate instead of a certificate signing request (CSR)
+# 		-newkey rsa:4096 \ generates a new RSA private key with 4096 bits of entropy
+# 		-keyout /etc/nginx/ssl/server.key \ where to save the private key, must be secret and secure
+# 		-out /etc/nginx/ssl/server.crt \ where to save the certificate, public cert that is sent to clients during the SSL handshake
+# 		-days 365 \ certificate validity 
+# 		-nodes \ create unencrypted private key. Otherwise, a passphrase would be prompted every time Nginx starts
+# 		-subj "/C=DE/ST=Berlin/L=Berlin/O=42/CN=localhost" certificate subject information
 generate_ss_ssl()
 {
 	if [ ! -f /etc/nginx/ssl/server.crt ]; then
-		openssl req -x509 \
+		openssl req \
+			-x509 \
 			-newkey rsa:4096 \
 			-keyout /etc/nginx/ssl/server.key \
 			-out /etc/nginx/ssl/server.crt \
 			-days 365 \
 			-nodes \
-			-subj "/C=DE/ST=Berlin/L=Berlin/O=42/CN=localhost"
+			-subj "/C=DE/ST=Berlin/L=Berlin/O=42/CN=hsetyamu.42.fr"
 	fi
 }
 

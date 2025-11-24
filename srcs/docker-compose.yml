@@ -1,7 +1,7 @@
 
 services:
   mariadb:
-    image: mdb:inception
+    image: mdb:inc42
     build:
       context: requirements/mariadb/
       dockerfile: Dockerfile
@@ -9,15 +9,21 @@ services:
     volumes:
       - mdb_data:/var/lib/mysql
     environment:
-      DATABASE_NAME: MDB_NAME666
-      DATABASE_USER_NAME: MDB_USER666
-      DATABASE_USER_PASSWORD: MDB_PASSWD666
+      DB_NAME: ${DB_NAME}
+      DB_USER_NAME: ${DB_USER_NAME}
     networks:
       - inception
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+    secrets:
+      - db_user_pw
 
   wordpress:
-    image: wp:inception
+    image: wp:inc42
     build:
       context: requirements/wordpress/
       dockerfile: Dockerfile
@@ -25,18 +31,28 @@ services:
     volumes:
       - wp_data:/var/www/html
     environment:
-      DATABASE_NAME: MDB_NAME666
-      DATABASE_USER_NAME: MDB_USER666
-      DATABASE_USER_PASSWORD: MDB_PASSWD666
-      DATABASE_HOST: mariadb
+      DB_NAME: ${DB_NAME}
+      DB_USER_NAME: ${DB_USER_NAME}
+      DB_HOST: mariadb
+      WP_ADM_USER: ${WP_ADM_USER}
+      WP_ADM_EMAIL: ${WP_ADM_EMAIL}
     networks:
       - inception
     depends_on:
-      - mariadb
+      mariadb:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -tnlp | grep :9000 || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+    secrets:
+      - db_user_pw
+      - wp_adm_pw
 
   nginx:
-    image: nginx:inception
+    image: nginx:inc42
     build:
       context: requirements/nginx/
       dockerfile: Dockerfile
@@ -46,11 +62,19 @@ services:
     networks:
       - inception
     depends_on:
-      - wordpress
-      - mariadb
+      wordpress:
+        condition: service_healthy
+      mariadb:
+        condition: service_healthy
     restart: unless-stopped
     ports:
+      - "80:80"
       - "443:443"
+    healthcheck:
+      test: ["CMD", "curl", "-kfI", "https://localhost:443"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
 
 volumes:
   mdb_data:
@@ -61,3 +85,9 @@ volumes:
 networks:
   inception:
     driver: bridge
+
+secrets:
+  db_user_pw:
+    file: ../secrets/DB_USER_PW
+  wp_adm_pw:
+    file: ../secrets/WP_ADM_PW

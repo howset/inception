@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 RED='\033[0;31m'
 GRE='\033[0;32m'
@@ -41,14 +41,11 @@ apply_msi()
 
 setup_db()
 {
-	local DATABASE_NAME=MDB_NAME666
-	local DATABASE_USER_NAME=MDB_USER666
-	local DATABASE_USER_PASSWORD=MDB_PASSWD666
-
+	local DB_USER_PW=$(cat /run/secrets/DB_USER_PW)
 	echo -e "${MAG}Setting up the database${RES}"
-	mariadb -e "CREATE DATABASE IF NOT EXISTS $DATABASE_NAME;" #create db
-	mariadb -e "CREATE USER IF NOT EXISTS '$DATABASE_USER_NAME'@'%' IDENTIFIED BY '$DATABASE_USER_PASSWORD';" #adds new user with password, allowing connection from any host ('%')
-	mariadb -e "GRANT ALL ON $DATABASE_NAME.* TO '$DATABASE_USER_NAME'@'%';" #give full privilege to user
+	mariadb -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};" #create db
+	mariadb -e "CREATE USER IF NOT EXISTS '${DB_USER_NAME}'@'%' IDENTIFIED BY '$DB_USER_PW';" #adds new user with password, allowing connection from any host ('%')
+	mariadb -e "GRANT ALL ON ${DB_NAME}.* TO '${DB_USER_NAME}'@'%';" #give full privilege to user
 	mariadb -e "FLUSH PRIVILEGES;"
 	echo -e "${GRE}Setting up the database...Done!${RES}"
 }

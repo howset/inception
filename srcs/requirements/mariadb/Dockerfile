@@ -6,15 +6,14 @@ FROM alpine:3.21.1
 RUN apk update && apk add \
 	mariadb \
 	mariadb-client \
-	bash
+	nano
 
 #init script
 COPY ./tools/mdb_init.sh /usr/local/bin/mdb_init.sh
 RUN chmod +x /usr/local/bin/mdb_init.sh
 
-#mdb config
+#mdb config, overwrite it
 COPY ./conf/mdb.cnf /etc/my.cnf.d/mariadb-server.cnf
-RUN chmod u=rw,go=r /etc/my.cnf.d/mariadb-server.cnf
 
 #expose port (for WP connection)
 EXPOSE 3306
