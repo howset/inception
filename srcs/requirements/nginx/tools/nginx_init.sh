@@ -20,12 +20,6 @@ create_dirs()
 	mkdir -p /etc/nginx/ssl #to store SSL/TLS certificates and keys
 	mkdir -p /run/nginx #reate nginx run directory if it doesn't exist
 	echo -e "${GRE}Creating directories...Done!${RES}"
-}set_permissions()
-{
-	echo -e "${MAG}Setting permissions${RES}"
-	chmod u=rw,go= /etc/nginx/ssl/server.key
-	chmod u=rw,g=r,o=r /etc/nginx/ssl/server.crt
-	echo -e "${GRE}Setting permissions...Done!${RES}"
 }
 
 #generate self-signed SSL certificate if it doesn't exist

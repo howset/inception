@@ -100,8 +100,8 @@ networks:
 
 secrets:
   db_user_pw:
-    file: ../secrets/db_user_pw
+    file: ${DB_USER_PW}
   wp_adm_pw:
-    file: ../secrets/wp_adm_pw
+    file: ${WP_ADM_PW}
   wp_user_pw:
-    file: ../secrets/wp_user_pw
+    file: ${WP_USER_PW}
