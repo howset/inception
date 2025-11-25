@@ -352,8 +352,8 @@ RUN chmod +x /usr/local/bin/mdb_init.sh
 #mdb config, overwrite it
 COPY ./conf/mdb.cnf /etc/my.cnf.d/mariadb-server.cnf
 
-#expose port (for WP connection)
-EXPOSE 3306
+#expose port (purely metadata)
+#EXPOSE 3306
 
 #use the init script as entrypoint
 ENTRYPOINT ["/usr/local/bin/mdb_init.sh"]
@@ -395,13 +395,13 @@ echo -e "${CYA}Running mdb_init.sh${RES}"
 start_mdb_bg()
 {
 	echo -e "${MAG}Installing/running mdb daemon${RES}"
-	if [ ! -d /var/lib/mysql/mysql ]; then #create database
+	if [ ! -d /var/lib/mysql/mysql ]; then #create database (mysql is the standard)
 		mariadb-install-db --user=mysql --datadir=/var/lib/mysql
 	fi
 	mkdir -p /run/mysqld #-p avoids errors if it already exists
 	chown -R mysql:mysql /run/mysqld /var/lib/mysql #set mysql user and group
 	chmod u=rwx,g=,o= /run/mysqld #set permissions so only owner mysql can read/write/execute in dir to improve security.
-	mariadbd --user=mysql --datadir=/var/lib/mysql --skip-networking=0 & #mdb server daemon in bg, specify user, datadir, ensure networking is enabled
+	mariadbd --user=mysql --datadir=/var/lib/mysql --skip-networking=0 --port=${DB_PORT}& #mdb server daemon in bg, specify user, datadir, ensure networking is enabled
 	sleep 5
 	echo -e "${GRE}Installing/running mdb daemon...Done!${RES}"
 }
@@ -420,7 +420,7 @@ apply_msi()
 
 setup_db()
 {
-	local DB_USER_PW=$(cat /run/secrets/DB_USER_PW)
+	local DB_USER_PW=$(cat /run/secrets/db_user_pw)
 	echo -e "${MAG}Setting up the database${RES}"
 	mariadb -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};" #create db
 	mariadb -e "CREATE USER IF NOT EXISTS '${DB_USER_NAME}'@'%' IDENTIFIED BY '$DB_USER_PW';" #adds new user with password, allowing connection from any host ('%')
@@ -440,7 +440,7 @@ sleep 1
 echo -e "${GRE}MariaDB setup complete!${RES}"
 
 # Start MariaDB server in the foreground (PID 1)
-exec mariadbd --user=mysql --datadir=/var/lib/mysql
+exec mariadbd --user=mysql --datadir=/var/lib/mysql --port=${DB_PORT}
 # exec "$@"
 ```
 </details>
@@ -455,9 +455,9 @@ exec mariadbd --user=mysql --datadir=/var/lib/mysql
 
 ```
 [mariadbd]
-#allow all connections
-bind-address			= 0.0.0.0
-#port = 3306 #unnecessary?
+bind-address = 0.0.0.0
+#port = 3307 #can be changed to anything other than default (3306) --> use the script & .env to change
+#skip-external-locking #if multiple mdb instances try modify same file simultaneously
 #datadir = /var/lib/mysql #unnecessary?
 #socket = /run/mysqld/mysqld.sock #unnecessary?
 #skip-networking = 0 #unnecessary?
@@ -465,7 +465,12 @@ bind-address			= 0.0.0.0
 </details>
 
 ### Nginx
-Follows basically similar idea with mdb. 
+- Follows basically similar idea with mdb.
+- the security cert is generated at runtime which are advantegeous in respect:
+	- no key stored in the git repo
+	- each environment gets a unique key (cluster comp, laptop, vm)
+	- destroyed with docker-compose down -v, regenerated fresh
+- but of course unstable and not reflective of real situation (that uses CA - Certificate Authority)
 
 #### Dockerfile
 -- Similar with mdb --
@@ -481,16 +486,16 @@ FROM alpine:3.21.1
 RUN apk update && apk add \
 	nginx \
 	openssl \
-	nano curl
+	nano curl gettext
 
 #init script
 COPY ./tools/nginx_init.sh /usr/local/bin/nginx_init.sh
 RUN chmod +x /usr/local/bin/nginx_init.sh
 
 #nginx config, NOT overwrite
-COPY ./conf/nginx.cnf /etc/nginx/http.d/secure.conf
+COPY ./conf/nginx.cnf /etc/nginx/http.d/secure.conf.template
 
-#expose port (none here, because it's just gonna be internal. public exposure in docker-compose)
+#expose port (none here, public exposure in docker-compose)
 
 #use the init script as entrypoint
 ENTRYPOINT ["/usr/local/bin/nginx_init.sh"]
@@ -526,6 +531,12 @@ create_dirs()
 	mkdir -p /etc/nginx/ssl #to store SSL/TLS certificates and keys
 	mkdir -p /run/nginx #reate nginx run directory if it doesn't exist
 	echo -e "${GRE}Creating directories...Done!${RES}"
+}set_permissions()
+{
+	echo -e "${MAG}Setting permissions${RES}"
+	chmod u=rw,go= /etc/nginx/ssl/server.key
+	chmod u=rw,g=r,o=r /etc/nginx/ssl/server.crt
+	echo -e "${GRE}Setting permissions...Done!${RES}"
 }
 
 #generate self-signed SSL certificate if it doesn't exist
@@ -560,9 +571,18 @@ set_permissions()
 	echo -e "${GRE}Setting permissions...Done!${RES}"
 }
 
+#substitute environment variables into nginx config (to change ports)
+setup_nginx_config()
+{
+	echo -e "${MAG}Setting Nginx config (port)${RES}"
+	envsubst '${WP_PORT}' < /etc/nginx/http.d/secure.conf.template > /etc/nginx/http.d/secure.conf
+	echo -e "${GRE}Nginx config (port)...Done!${RES}"
+}
+
 create_dirs
 generate_ss_ssl
 set_permissions
+setup_nginx_config
 
 echo -e "${GRE}nginx setup complete!${RES}"
 
@@ -608,13 +628,10 @@ server {
 	location ~ \.php$ {
 		# Check if php file exists; if not, error 404 not found
 		try_files	$uri =404;
-
 		# Pass the .php files to the FPM listening on this address
-		fastcgi_pass	wordpress:9000;
-
+		fastcgi_pass	wordpress:${WP_PORT};
 		 # Set the script name
 		fastcgi_index	index.php;
-
 		# Include the necessary variables
 		include			fastcgi_params;
 		fastcgi_param	SCRIPT_FILENAME $document_root$fastcgi_script_name;
@@ -669,7 +686,7 @@ RUN apk update && apk add \
 	imagemagick \
 	icu-data-full \
 	mariadb-client \
-	curl nano
+	curl nano gettext
 
 #get wp-cli
 RUN curl -o /usr/local/bin/wp-cli.phar \
@@ -681,15 +698,14 @@ RUN curl -o /usr/local/bin/wp-cli.phar \
 COPY ./tools/wp_init.sh /usr/local/bin/wp_init.sh
 RUN chmod +x /usr/local/bin/wp_init.sh
 
-#wp config, overwrite it
-COPY ./conf/wp.conf /etc/php83/php-fpm.d/www.conf
+#wp config, overwrite it later in the script
+COPY ./conf/wp.conf /etc/php83/php-fpm.d/www.conf.template
 
-#expose port
-EXPOSE 9000
+#expose port (purely metadata)
+#EXPOSE 9000
 
 ENTRYPOINT ["/usr/local/bin/wp_init.sh"]
 # CMD ["php-fpm83", "-F"]
-#ENTRYPOINT ["php-fpm83", "-F"]
 ```
 </details>
 
@@ -726,6 +742,14 @@ change_limit()
 	sed -i 's/^memory_limit = .*/memory_limit = 256M/' /etc/php83/php.ini
 }
 
+##substitute environment variables into php-fpm config (to change ports)
+setup_php_config()
+{
+	echo -e "${MAG}Setting php-fpm config (port)${RES}"
+	envsubst < /etc/php83/php-fpm.d/www.conf.template > /etc/php83/php-fpm.d/www.conf
+	echo -e "${GRE}php-fpm config (port)...Done!${RES}"
+}
+
 #run core download (no wp-config.php yet)
 wp_core_download()
 {
@@ -741,7 +765,7 @@ wp_core_download()
 #generate config file
 wp_config_create()
 {
-	local DB_USER_PW=$(cat /run/secrets/DB_USER_PW)
+	local DB_USER_PW=$(cat /run/secrets/db_user_pw)
 	if [ ! -f /var/www/html/wp-config.php ]; then
 		echo -e "${MAG}Creating wp-config.php...${RES}"
 		wp config create --allow-root \
@@ -749,7 +773,7 @@ wp_config_create()
 			--dbname="${DB_NAME}" \
 			--dbuser="${DB_USER_NAME}" \
 			--dbpass="$DB_USER_PW" \
-			--dbhost="${DB_HOST}"
+			--dbhost="${DB_HOST}:${DB_PORT}"
 		echo -e "${GRE}Creating wp-config.php...Done!${RES}"
 	else
 		echo -e "${YEL}wp-config.php already exists${RES}"
@@ -759,13 +783,13 @@ wp_config_create()
 #install wp
 wp_core_install()
 {
-	local WP_ADM_PW=$(cat /run/secrets/WP_ADM_PW)
+	local WP_ADM_PW=$(cat /run/secrets/wp_adm_pw)
 	if ! wp core is-installed --allow-root --path=/var/www/html 2>/dev/null; then
 		echo -e "${MAG}Installing WordPress...${RES}"
 		wp core install --allow-root \
 			--path=/var/www/html/ \
 			--url="hsetyamu.42.fr" \
-			--title="Inception" \
+			--title="${WP_TITLE}" \
 			--admin_user="${WP_ADM_USER}" \
 			--admin_password="$WP_ADM_PW" \
 			--admin_email="${WP_ADM_EMAIL}" \
@@ -776,19 +800,37 @@ wp_core_install()
 	fi
 }
 
+wp_create_user()
+{
+	local WP_USER_PW=$(cat /run/secrets/wp_user_pw)
+	if ! wp user get "$WP_USER" --allow-root --path=/var/www/html 2> /dev/null; then
+		echo -e "${MAG}Creating user...${RES}"
+		wp user create "$WP_USER" "$WP_USER_EMAIL" \
+			--path=/var/www/html \
+			--role=editor \
+			--user_pass="$WP_USER_PW" \
+			--allow-root
+		echo -e "${GRE}Creating user...Done!${RES}"
+	else
+		echo -e "${YEL}Creating user fails!${RES}"
+	fi
+}
+
 #set permissions
 set_permissions()
 {
 	echo -e "${MAG}Setting permissions${RES}"
-	chown -R nobody:nobody /var/www/html
-	chmod -R u+rwx,go+rx /var/www/html
+	chown -R nobody:nogroup /var/www/html
+	chmod -R u=rwx,go=rx /var/www/html
 	echo -e "${GRE}Setting permissions...Done!${RES}"
 }
 
 change_limit
+setup_php_config
 wp_core_download
 wp_config_create
 wp_core_install
+wp_create_user
 set_permissions
 
 echo -e "${GRE}WordPress setup complete!${RES}"
@@ -808,12 +850,12 @@ exec php-fpm83 -F
 ```
 [www]
 ; PHP-FPM pool name
-listen = 0.0.0.0:9000
+listen = 0.0.0.0:${WP_PORT}
 ;listen.allowed_clients = 127.0.0.1,nginx
 
 ; User and group
-user = nobody
-group = nogroup
+user = nobody ;default
+group = nogroup ;default
 
 ; Process manager
 pm = dynamic
@@ -824,7 +866,6 @@ pm.max_spare_servers = 3
 
 ; Logging
 access.log = /proc/self/fd/1
-;error_log = /proc/self/fd/2
 catch_workers_output = yes
 
 ; Clear environment
@@ -867,7 +908,7 @@ services:
       interval: 20s
       timeout: 5s
       retries: 3
-    secrets:
+    secrets:nobody:nogroup
       - db_user_pw
 
   wordpress:
