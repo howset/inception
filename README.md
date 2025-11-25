@@ -87,9 +87,11 @@ Reqs:
 - Change to root
 	<details>
 	<summary>Start shell</summary>
+
 	```sh
 	$> su - #start the shell as login shell
 	```
+	
 	</details>
 - Make community repo available. Edit the list & uncomment community repo
 	```sh
