@@ -225,7 +225,7 @@ Reqs:
 - Most importantly, change wallpepah! 90% of a theme is the wallpaper.
 - If font color for desktop icons has to be changed, edit/add `gtk.css` in `~/.config/gtk-3.0/` with the following:
 	<details>
-	<summary>Click to expand gtk.css</summary>
+	<summary>🗟Click to expand gtk.css</summary>
 
 	```css
 	/* default state */
@@ -283,7 +283,7 @@ Reqs:
 - __EXPOSE__ in dockerfiles means nothing other than metadata for documentation. Since this project doesnt really say anything the port to be used for connections between the containers (other than in the diagram, which uses the default ports for the services i.e. mariadb 3306 and php-fpm 9000), so using the defaults would work just fine, namely not defining anything in the dockerfile (See Docker Compose below).
 - Useful but can be confusing commands:[^6]
 <details>
-<summary>Click to expand table of commands</summary>
+<summary>🗟Click to expand table of commands</summary>
 
 | Command			| Options	| Parameter			|Function			|
 |-------------------|-----------|-------------------|------------------|
@@ -332,7 +332,7 @@ Notes:
 - Although setting file permissions using RUN may seem to be unnecessarily adding layers, but its safer and easier to make sure that all runs nicely.
 - An alternate to docker hub to pull image if somehow dockerhub is down can be amazon[^12].
 <details>
-<summary>Dockerfile (mdb)</summary>
+<summary>🗟 Dockerfile (mdb)</summary>
 
 ```docker
 # Base image
@@ -374,7 +374,7 @@ The flow is as follows:
 - then stops the daemon and `exec` mariadb as foreground process.
 
 <details>
-<summary>init script (mdb)</summary>
+<summary>🗟 init script (mdb)</summary>
 
 ```sh
 #!/bin/sh
@@ -451,7 +451,7 @@ exec mariadbd --user=mysql --datadir=/var/lib/mysql
 - The location of the config file in alpine is not the same as in debian.
 
 <details>
-<summary>configs (mdb)</summary>
+<summary>🗟configs (mdb)</summary>
 
 ```
 [mariadbd]
@@ -470,7 +470,7 @@ Follows basically similar idea with mdb.
 #### Dockerfile
 -- Similar with mdb --
 <details>
-<summary>Dockerfile (nginx)</summary>
+<summary>🗟Dockerfile (nginx)</summary>
 
 ```docker
 # Base image
@@ -501,7 +501,7 @@ ENTRYPOINT ["/usr/local/bin/nginx_init.sh"]
 #### Entrypoint script
 Sets up SSL?
 <details>
-<summary>init script (nginx)</summary>
+<summary>🗟init script (nginx)</summary>
 
 ```sh
 #!/bin/sh
@@ -577,7 +577,7 @@ exec nginx -g "daemon off;"
 - The config file `nginx.cnf` is __not__ copied to the docker container (overwrite) in `/etc/nginx/nginx.conf` because that is the parent one, and in the last line _virtual hosts configs includes_ points to `/etc/nginx/http.d/*.conf`.
 
 <details>
-<summary>configs (nginx)</summary>
+<summary>🗟configs (nginx)</summary>
 
 ```
 server {
@@ -636,7 +636,7 @@ server {
 - install lots of packages because alpine (debian only installs sevreal i think).
 - getting WP-CLI[^17] to install wp in the script.
 <details>
-<summary>Dockerfile (wp)</summary>mdb
+<summary>🗟Dockerfile (wp)</summary>mdb
 
 ```docker
 # Base image
@@ -702,7 +702,7 @@ ENTRYPOINT ["/usr/local/bin/wp_init.sh"]
 	4. `wp core install` install wp.
 
 <details>
-<summary>init script (wp)</summary>
+<summary>🗟init script (wp)</summary>
 
 ```sh
 #!/bin/sh
@@ -803,7 +803,7 @@ exec php-fpm83 -F
 - overwrite www.conf (pool configuration files) that is read by default by PHP-FPM as defined in `/etc/php82/php-fpm.conf`.
 
 <details>
-<summary>configs (wp)</summary>
+<summary>🗟configs (wp)</summary>
 
 ```
 [www]
@@ -841,7 +841,7 @@ php_value[memory_limit] = 512M
 
 ### Docker Compose
 <details>
-<summary>docker-compose.yml</summary>
+<summary>🗟docker-compose.yml</summary>
 
 ```docker
 
