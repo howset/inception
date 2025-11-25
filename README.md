@@ -85,14 +85,9 @@ Reqs:
 ### OS setup, essential installations, & configs
 #### Getting sudo
 - Change to root
-	<details>
-	<summary>Start shell</summary>
-
 	```sh
 	$> su - #start the shell as login shell
 	```
-	
-	</details>
 - Make community repo available. Edit the list & uncomment community repo
 	```sh
 	$> vi /etc/apk/repositories
@@ -229,6 +224,9 @@ Reqs:
 		- And `Window Manager` -> `Style`
 - Most importantly, change wallpepah! 90% of a theme is the wallpaper.
 - If font color for desktop icons has to be changed, edit/add `gtk.css` in `~/.config/gtk-3.0/` with the following:
+	<details>
+	<summary>Click to expand gtk.css</summary>
+
 	```css
 	/* default state */
 	XfdesktopIconView.view {
@@ -260,6 +258,8 @@ Reqs:
 	text-shadow: 0px 1px 1px black; }
 	```
 
+	</details>
+
 #### Utilities: VSCode remote SSH, git, etc
 - Edit `/etc/ssh/sshd_config`
 - Uncomment/edit/add this lines
@@ -282,6 +282,8 @@ Reqs:
 - The base image can basically be from anything, either from debian:bookworm or alpine:3.21.1 as long as the kernel is the same (linux), the difference is the size of the image using alpine ended up smaller than debian (~200 MB vs ~500 MB), and some adjustments also has to be made due to some differences between the systems (e.g. alpine has no bash by default).
 - __EXPOSE__ in dockerfiles means nothing other than metadata for documentation. Since this project doesnt really say anything the port to be used for connections between the containers (other than in the diagram, which uses the default ports for the services i.e. mariadb 3306 and php-fpm 9000), so using the defaults would work just fine, namely not defining anything in the dockerfile (See Docker Compose below).
 - Useful but can be confusing commands:[^6]
+<details>
+<summary>Click to expand table of commands</summary>
 
 | Command			| Options	| Parameter			|Function			|
 |-------------------|-----------|-------------------|------------------|
@@ -308,6 +310,7 @@ Reqs:
 | docker top 		| 			| [ID]/[Name]		| first process listed is PID 1|
 | docker save 		| -o		| 					| save an image as .tar|
 | docker load 		| -i		| [Name]			| load a .tar image|
+</details>
 
 ### Mariadb
 The basic ideass are as follows:
@@ -328,6 +331,8 @@ Notes:
 - ~~Since the init script that is used as the entrypoint was made during testing (using bash as default in the shebang), so bash has to be installed along with mariadb server & client.~~ Just use sh/ash.
 - Although setting file permissions using RUN may seem to be unnecessarily adding layers, but its safer and easier to make sure that all runs nicely.
 - An alternate to docker hub to pull image if somehow dockerhub is down can be amazon[^12].
+<details>
+<summary>Dockerfile (mdb)</summary>
 
 ```docker
 # Base image
@@ -355,6 +360,8 @@ ENTRYPOINT ["/usr/local/bin/mdb_init.sh"]
 #CMD ["mariadbd", "--user=mysql", "--datadir=/var/lib/mysql"]
 ```
 
+</details>
+
 #### Entrypoint script
 The flow is as follows:
 1. Start MariaDB in background (the daemon)
@@ -366,6 +373,9 @@ The flow is as follows:
 - the function `apply_secure_fixes()` is basically running the `mariadb_secure_installation` manually.
 - `setup_db()`
 - then stops the daemon and `exec` mariadb as foreground process.
+
+<details>
+<summary>init script (mdb)</summary>
 
 ```sh
 #!/bin/sh
@@ -435,10 +445,15 @@ exec mariadbd --user=mysql --datadir=/var/lib/mysql
 # exec "$@"
 ```
 
+</details>
+
 #### Configs
 - The config file consist of the allowed connections (all --> bind-address 0.0.0.0) and then put (copied) to the proper location (by the dockerfile). 
 - Many configuration options can be passed as flags to mariadbd[^15].
 - The location of the config file in alpine is not the same as in debian.
+
+<details>
+<summary>configs (mdb)</summary>
 
 ```
 [mariadbd]
@@ -450,11 +465,16 @@ bind-address			= 0.0.0.0
 #skip-networking = 0 #unnecessary?
 ```
 
+</details>
+
 ### Nginx
 Follows basically similar idea with mdb. 
 
 #### Dockerfile
 -- Similar with mdb --
+<details>
+<summary>Dockerfile (nginx)</summary>
+
 ```docker
 # Base image
 FROM alpine:3.21.1
@@ -481,8 +501,13 @@ ENTRYPOINT ["/usr/local/bin/nginx_init.sh"]
 
 ```
 
+</details>
+
 #### Entrypoint script
 Sets up SSL?
+<details>
+<summary>init script (nginx)</summary>
+
 ```sh
 #!/bin/sh
 
@@ -551,9 +576,14 @@ exec nginx -g "daemon off;"
 # exec "$@"
 ```
 
+</details>
+
 #### Configs[^16]
 - The default config file[^13][^14].
 - The config file `nginx.cnf` is __not__ copied to the docker container (overwrite) in `/etc/nginx/nginx.conf` because that is the parent one, and in the last line _virtual hosts configs includes_ points to `/etc/nginx/http.d/*.conf`.
+
+<details>
+<summary>configs (nginx)</summary>
 
 ```
 server {
@@ -606,10 +636,15 @@ server {
 }
 ```
 
+</details>
+
 ### Wordpress
 #### Dockerfile
 - install lots of packages because alpine (debian only installs sevreal i think).
 - getting WP-CLI[^17] to install wp in the script.
+<details>
+<summary>Dockerfile (wp)</summary>mdb
+
 ```docker
 # Base image
 FROM alpine:3.21.1
@@ -664,6 +699,8 @@ ENTRYPOINT ["/usr/local/bin/wp_init.sh"]
 #ENTRYPOINT ["php-fpm83", "-F"]
 ```
 
+</details>
+
 #### Entrypoint script
 - the idea here is to wait for mdb to finish setting up, so the set -e (shell error is encountered) comes handy here so that if mdb container has not finished setting up, then connection can not be established (yet), the script will exit, then docker compose will restart it. Again and again until mdb container is finished, and connection can be established.
 - wp is installed in 4 steps (via wp-cli)[^18]:
@@ -671,6 +708,9 @@ ENTRYPOINT ["/usr/local/bin/wp_init.sh"]
 	2. `wp config create` generate config file (`/var/www/html/wp-config.php`).
 	3. `wp db create` create db -- skipped because db is handled by mdb_container.
 	4. `wp core install` install wp.
+
+<details>
+<summary>init script (wp)</summary>
 
 ```sh
 #!/bin/sh
@@ -766,8 +806,13 @@ exec php-fpm83 -F
 # exec "$@"
 ```
 
+</details>
+
 #### Configs
 - overwrite www.conf (pool configuration files) that is read by default by PHP-FPM as defined in `/etc/php82/php-fpm.conf`.
+
+<details>
+<summary>configs (wp)</summary>
 
 ```
 [www]
@@ -801,13 +846,19 @@ php_value[upload_max_filesize] = 64M
 php_value[post_max_size] = 64M
 php_value[memory_limit] = 512M
 ```
+
+</details>
+
 ### Docker Compose
 #### Worth mentioning
 - __.env__[^20] useful to put all variables that can be easily changed (but not sensitive info because it can be inspected. 
 - __Secrets__[^19] are case sensitive, filename and such, be careful. Useful for sensitive info (passwords) --> does not show with `docker inspect [container]`.
 - __Healthcheck__ just an arbitrary test parameter to run periodically. A repeated 0 exit status of the check means healthy. 
 - __depends-on__ useful to start (NOT create) a service __after__ another (healthy) service has been started.
-- __ports__ publishing ports outside the network. `docker ps` lists only the json file, and EXPOSE in the dockerfile just writes the metadata to this file. Without EXPOSE in the dockerfiles, intercontainer communication is left to the default of each services. This can be checked by `docker exec [container] netstat -tnl`.
+- __ports__ publishing ports outside the network
+wp_core_download()
+{
+	if [ ! -f /var/www/html/wp-load.php ]; then. `docker ps` lists only the json file, and EXPOSE in the dockerfile just writes the metadata to this file. Without EXPOSE in the dockerfiles, intercontainer communication is left to the default of each services. This can be checked by `docker exec [container] netstat -tnl`.
 - on topic of ports, leaving the default is definitely the best practice. Changing them is unnecessarily tangled since it involves changing the configurations of the related containers, e.g mdb <--port--> wp or wp(php-fpm) <--port--> nginx, though however, the definition can be conviniently put as environmental variable in .env file. I do it because I'm already in too deep here. So as it stands currently, the script and docker-compose files are more complicated as they should be because i need to add a functionality (`envsubst`) to change the content of the config file on the fly which in turn requires the installation of another package (`gettext`) and providing unnecessary clutter to the docker-compose because i have to specify the env vars.
 
 ### Notes
