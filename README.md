@@ -359,7 +359,6 @@ EXPOSE 3306
 ENTRYPOINT ["/usr/local/bin/mdb_init.sh"]
 #CMD ["mariadbd", "--user=mysql", "--datadir=/var/lib/mysql"]
 ```
-
 </details>
 
 #### Entrypoint script
@@ -444,7 +443,6 @@ echo -e "${GRE}MariaDB setup complete!${RES}"
 exec mariadbd --user=mysql --datadir=/var/lib/mysql
 # exec "$@"
 ```
-
 </details>
 
 #### Configs
@@ -464,7 +462,6 @@ bind-address			= 0.0.0.0
 #socket = /run/mysqld/mysqld.sock #unnecessary?
 #skip-networking = 0 #unnecessary?
 ```
-
 </details>
 
 ### Nginx
@@ -498,9 +495,7 @@ COPY ./conf/nginx.cnf /etc/nginx/http.d/secure.conf
 #use the init script as entrypoint
 ENTRYPOINT ["/usr/local/bin/nginx_init.sh"]
 # CMD [ "nginx", "-g", "daemon off;" ]
-
 ```
-
 </details>
 
 #### Entrypoint script
@@ -575,7 +570,6 @@ echo -e "${GRE}nginx setup complete!${RES}"
 exec nginx -g "daemon off;"
 # exec "$@"
 ```
-
 </details>
 
 #### Configs[^16]
@@ -635,7 +629,6 @@ server {
 	return 301 https://$server_name$request_uri;
 }
 ```
-
 </details>
 
 ### Wordpress
@@ -698,7 +691,6 @@ ENTRYPOINT ["/usr/local/bin/wp_init.sh"]
 # CMD ["php-fpm83", "-F"]
 #ENTRYPOINT ["php-fpm83", "-F"]
 ```
-
 </details>
 
 #### Entrypoint script
@@ -805,7 +797,6 @@ echo -e "${GRE}WordPress setup complete!${RES}"
 exec php-fpm83 -F
 # exec "$@"
 ```
-
 </details>
 
 #### Configs
@@ -846,10 +837,123 @@ php_value[upload_max_filesize] = 64M
 php_value[post_max_size] = 64M
 php_value[memory_limit] = 512M
 ```
-
 </details>
 
 ### Docker Compose
+<details>
+<summary>docker-compose.yml</summary>
+
+```docker
+
+services:
+  mariadb:
+    image: mdb:inc42
+    build:
+      context: requirements/mariadb/
+      dockerfile: Dockerfile
+    container_name: mdb_cont
+    volumes:
+      - mdb_data:/var/lib/mysql
+    environment:
+      DB_NAME: ${DB_NAME}
+      DB_USER_NAME: ${DB_USER_NAME}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+    networks:
+      - inception
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+    secrets:
+      - db_user_pw
+
+  wordpress:
+    image: wp:inc42
+    build:
+      context: requirements/wordpress/
+      dockerfile: Dockerfile
+    container_name: wp_cont
+    volumes:
+      - wp_data:/var/www/html
+    environment:
+      DB_NAME: ${DB_NAME}
+      DB_USER_NAME: ${DB_USER_NAME}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      WP_TITLE: ${WP_TITLE}
+      WP_ADM_USER: ${WP_ADM_USER}
+      WP_ADM_EMAIL: ${WP_ADM_EMAIL}
+      WP_PORT: ${WP_PORT}
+      WP_USER: ${WP_USER}
+      WP_USER_EMAIL: ${WP_USER_EMAIL}
+    networks:
+      - inception
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      #test: ["CMD-SHELL", "netstat -tnlp | grep :${WP_PORT} || exit 1"]
+      #test: ["CMD-SHELL", "test -S /run/php-fpm.sock || exit 1"]
+      test: ["CMD-SHELL", "wp core is-installed --allow-root --path=/var/www/html > /dev/null 2>&1 || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+    secrets:
+      - db_user_pw
+      - wp_adm_pw
+      - wp_user_pw
+
+  nginx:
+    image: nginx:inc42
+    build:
+      context: requirements/nginx/
+      dockerfile: Dockerfile
+    container_name: nginx_cont
+    volumes:
+      - wp_data:/var/www/html
+    environment:
+      WP_PORT: ${WP_PORT}
+    networks:
+      - inception
+    depends_on:
+      wordpress:
+        condition: service_healthy
+      mariadb:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    healthcheck:
+      test: ["CMD", "curl", "-kfI", "https://localhost:443"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  mdb_data:
+    driver: local
+  wp_data:
+    driver: local
+
+networks:
+  inception:
+    driver: bridge
+
+secrets:
+  db_user_pw:
+    file: ../secrets/db_user_pw
+  wp_adm_pw:
+    file: ../secrets/wp_adm_pw
+  wp_user_pw:
+    file: ../secrets/wp_user_pw
+```
+</details>
+
 #### Worth mentioning
 - __.env__[^20] useful to put all variables that can be easily changed (but not sensitive info because it can be inspected. 
 - __Secrets__[^19] are case sensitive, filename and such, be careful. Useful for sensitive info (passwords) --> does not show with `docker inspect [container]`.
@@ -964,3 +1068,4 @@ https://wiki.alpinelinux.org/wiki/WordPress
 https://hub.docker.com/_/wordpress
 [^19]: https://serverfault.com/a/936262
 [^20]: https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/
+
