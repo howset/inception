@@ -27,9 +27,11 @@
 		- [Dockerfile](#dockerfile-2)
 		- [Entrypoint script](#entrypoint-script-2)
 		- [Configs](#configs-2)
+	- [Docker Compose](#docker-compose)
+		- [Worth mentioning](#worth-mentioning)
 	- [Notes](#notes)
-- [Glossary](#glossary)
-- [Plan](#plan)
+- [Evals](#evals)
+- [Terminology overload](#terminology-overload)
 - [References](#references)
 
 ## Starting points
@@ -273,7 +275,7 @@ Reqs:
 
 ## Docker containers
 - The base image can basically be from anything, either from debian:bookworm or alpine:3.21.1 as long as the kernel is the same (linux), the difference is the size of the image using alpine ended up smaller than debian (~200 MB vs ~500 MB), and some adjustments also has to be made due to some differences between the systems (e.g. alpine has no bash by default).
-
+- __EXPOSE__ in dockerfiles means nothing other than metadata for documentation. Since this project doesnt really say anything the port to be used for connections between the containers (other than in the diagram, which uses the default ports for the services i.e. mariadb 3306 and php-fpm 9000), so using the defaults would work just fine, namely not defining anything in the dockerfile (See Docker Compose below).
 - Useful but can be confusing commands:[^6]
 
 | Command			| Options	| Parameter			|Function			|
@@ -299,6 +301,8 @@ Reqs:
 | docker restart	| 			| [ID]/[Name]		| restart a container |
 | docker exec 		| -it		| [Cont_name] bash	| execute -it on a running container using bash|
 | docker top 		| 			| [ID]/[Name]		| first process listed is PID 1|
+| docker save 		| -o		| 					| save an image as .tar|
+| docker load 		| -i		| [Name]			| load a .tar image|
 
 ### Mariadb
 The basic ideass are as follows:
@@ -358,7 +362,7 @@ The flow is as follows:
 - `setup_db()`
 - then stops the daemon and `exec` mariadb as foreground process.
 
-```bash
+```sh
 #!/bin/sh
 
 RED='\033[0;31m'
@@ -474,7 +478,7 @@ ENTRYPOINT ["/usr/local/bin/nginx_init.sh"]
 
 #### Entrypoint script
 Sets up SSL?
-```bash
+```sh
 #!/bin/sh
 
 RED='\033[0;31m'
@@ -663,7 +667,7 @@ ENTRYPOINT ["/usr/local/bin/wp_init.sh"]
 	3. `wp db create` create db -- skipped because db is handled by mdb_container.
 	4. `wp core install` install wp.
 
-```bash
+```sh
 #!/bin/sh
 
 RED='\033[0;31m'
@@ -793,10 +797,17 @@ php_value[post_max_size] = 64M
 php_value[memory_limit] = 512M
 ```
 ### Docker Compose
-Secrets[^19]
+#### Worth mentioning
+- __.env__[^20] useful to put all variables that can be easily changed (but not sensitive info because it can be inspected. 
+- __Secrets__[^19] are case sensitive, filename and such, be careful. Useful for sensitive info (passwords) --> does not show with `docker inspect [container]`.
+- __Healthcheck__ just an arbitrary test parameter to run periodically. A repeated 0 exit status of the check means healthy. 
+- __depends-on__ useful to start (NOT create) a service __after__ another (healthy) service has been started.
+- __ports__ publishing ports outside the network. `docker ps` lists only the json file, and EXPOSE in the dockerfile just writes the metadata to this file. Without EXPOSE in the dockerfiles, intercontainer communication is left to the default of each services. This can be checked by `docker exec [container] netstat -tnl`.
+- on topic of ports, leaving the default is definitely the best practice. Changing them is unnecessarily tangled since it involves changing the configurations of the related containers, e.g mdb <--port--> wp or wp(php-fpm) <--port--> nginx, though however, the definition can be conviniently put as environmental variable in .env file. I do it because I'm already in too deep here. So as it stands currently, the script and docker-compose files are more complicated as they should be because i need to add a functionality (`envsubst`) to change the content of the config file on the fly which in turn requires the installation of another package (`gettext`) and providing unnecessary clutter to the docker-compose because i have to specify the env vars.
+
 ### Notes
 - I decided to just use the initsrcipt on each dockerfile as the ENTRYPOINT and ditched CMD (along with `exec "$@"` in the script) because although that works fine for mdb and nginx but wp the PID 1 would just be the script :
-	```bash
+	```sh
 	~/workspace/Inception $ docker exec mdb_container ps aux
 	PID		USER	TIME	COMMAND
 	1		mysql	0:00	mariadbd --user=mysql --datadir=/var/lib/mysql
@@ -808,7 +819,7 @@ Secrets[^19]
 	1		root	0:00	{wp_init.sh} /bin/bash /usr/local/bin/wp_init.sh php-fpm83 -F
 	```
 - So i just use the `exec` the command directly to run them to the foreground:
-	```bash
+	```sh
 	~/workspace/Inception $ docker exec mdb_container ps aux
 	PID		USER	TIME	COMMAND
 	1		mysql	0:00	mariadbd --user=mysql --datadir=/var/lib/mysql
@@ -819,8 +830,22 @@ Secrets[^19]
 	PID		USER	TIME	COMMAND
 	1		root	0:00	{php-fpm83} php-fpm: master process (/etc/php83/php-fpm.conf)
 	```
+- Users & groups are left as default (nobody for wp, nginx for nginx)
 
-## Glossary
+- Some utilities
+```sh
+netstat -tnlp #t = TCP conns only, n = numeric IP (not hostnames), l = only LISTENING ports, p = process on that port
+nc -zv #z = zero-I/O mode (just check if port is open, don't send/receive ), v = verbose
+curl -kfI #k = skip verifyng certs, f = fail silently on errors (exit code 22 on 4xx/5xx), I = headers only
+set -e #when (any) command fails, exit immediately
+echo -e #enable interpretation of backslahes, for colours
+nginx -t #check nginx config file
+envsubst #substitutes environment variables in shell format strings
+```
+## Evals
+
+
+## Terminology overload
 🐳 Docker & Containers
 - __Docker__ A platform that runs applications inside isolated environments called containers.
 - __Container__ A lightweight, isolated process that contains its own filesystem, packages, and configuration.
@@ -860,30 +885,6 @@ Secrets[^19]
 - __Daemon__ A background service (like MariaDB, PHP-FPM).
 - __exec (Bash)__ Replaces the current process with a new one. Used to make the final server process become PID 1.
 
-## Plan
-
-1. Create a Nginx container
-- Serve static files or reverse proxy
-
-2. Create a WordPress container
-- Configure to connect to MariaDB using env vars
-- Set up proper file permissions
-
-3. Use docker-compose to orchestrate all services
-- Pass environment variables to each service
-
-4. Add volume management
-- Persistent storage for databases (/var/lib/mysql)
-- Persistent storage for WordPress files
-- Persistent storage for Nginx configs
-
-5. Test the full stack
-- Verify all containers communicate
-- Test WordPress installation and functionality
-- Check data persists after container restart
-
-Priority: Start with docker-compose to tie everything together, then build/test the WordPress container.
-
 ## References
 [^1]: https://itsfoss.com/alpine-linux-virtualbox/
 [^2]: https://krython.com/post/installing-alpine-linux-in-virtualbox/
@@ -906,3 +907,4 @@ Priority: Start with docker-compose to tie everything together, then build/test 
 https://wiki.alpinelinux.org/wiki/WordPress
 https://hub.docker.com/_/wordpress
 [^19]: https://serverfault.com/a/936262
+[^20]: https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/
