@@ -11,11 +11,13 @@ services:
     environment:
       DB_NAME: ${DB_NAME}
       DB_USER_NAME: ${DB_USER_NAME}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
     networks:
       - inception
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
       interval: 20s
       timeout: 5s
       retries: 3
@@ -33,9 +35,14 @@ services:
     environment:
       DB_NAME: ${DB_NAME}
       DB_USER_NAME: ${DB_USER_NAME}
-      DB_HOST: mariadb
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      WP_TITLE: ${WP_TITLE}
       WP_ADM_USER: ${WP_ADM_USER}
       WP_ADM_EMAIL: ${WP_ADM_EMAIL}
+      WP_PORT: ${WP_PORT}
+      WP_USER: ${WP_USER}
+      WP_USER_EMAIL: ${WP_USER_EMAIL}
     networks:
       - inception
     depends_on:
@@ -43,13 +50,16 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "netstat -tnlp | grep :9000 || exit 1"]
+      #test: ["CMD-SHELL", "netstat -tnlp | grep :${WP_PORT} || exit 1"]
+      #test: ["CMD-SHELL", "test -S /run/php-fpm.sock || exit 1"]
+      test: ["CMD-SHELL", "wp core is-installed --allow-root --path=/var/www/html > /dev/null 2>&1 || exit 1"]
       interval: 20s
       timeout: 5s
       retries: 3
     secrets:
       - db_user_pw
       - wp_adm_pw
+      - wp_user_pw
 
   nginx:
     image: nginx:inc42
@@ -59,6 +69,8 @@ services:
     container_name: nginx_cont
     volumes:
       - wp_data:/var/www/html
+    environment:
+      WP_PORT: ${WP_PORT}
     networks:
       - inception
     depends_on:
@@ -88,6 +100,8 @@ networks:
 
 secrets:
   db_user_pw:
-    file: ../secrets/DB_USER_PW
+    file: ../secrets/db_user_pw
   wp_adm_pw:
-    file: ../secrets/WP_ADM_PW
+    file: ../secrets/wp_adm_pw
+  wp_user_pw:
+    file: ../secrets/wp_user_pw

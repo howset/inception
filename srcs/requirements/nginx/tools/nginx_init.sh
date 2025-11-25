@@ -20,6 +20,12 @@ create_dirs()
 	mkdir -p /etc/nginx/ssl #to store SSL/TLS certificates and keys
 	mkdir -p /run/nginx #reate nginx run directory if it doesn't exist
 	echo -e "${GRE}Creating directories...Done!${RES}"
+}set_permissions()
+{
+	echo -e "${MAG}Setting permissions${RES}"
+	chmod u=rw,go= /etc/nginx/ssl/server.key
+	chmod u=rw,g=r,o=r /etc/nginx/ssl/server.crt
+	echo -e "${GRE}Setting permissions...Done!${RES}"
 }
 
 #generate self-signed SSL certificate if it doesn't exist
@@ -54,9 +60,18 @@ set_permissions()
 	echo -e "${GRE}Setting permissions...Done!${RES}"
 }
 
+#substitute environment variables into nginx config (to change ports)
+setup_nginx_config()
+{
+	echo -e "${MAG}Setting Nginx config (port)${RES}"
+	envsubst '${WP_PORT}' < /etc/nginx/http.d/secure.conf.template > /etc/nginx/http.d/secure.conf
+	echo -e "${GRE}Nginx config (port)...Done!${RES}"
+}
+
 create_dirs
 generate_ss_ssl
 set_permissions
+setup_nginx_config
 
 echo -e "${GRE}nginx setup complete!${RES}"
 

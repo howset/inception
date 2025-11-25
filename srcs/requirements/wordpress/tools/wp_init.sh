@@ -19,6 +19,14 @@ change_limit()
 	sed -i 's/^memory_limit = .*/memory_limit = 256M/' /etc/php83/php.ini
 }
 
+##substitute environment variables into php-fpm config (to change ports)
+setup_php_config()
+{
+	echo -e "${MAG}Setting php-fpm config (port)${RES}"
+	envsubst < /etc/php83/php-fpm.d/www.conf.template > /etc/php83/php-fpm.d/www.conf
+	echo -e "${GRE}php-fpm config (port)...Done!${RES}"
+}
+
 #run core download (no wp-config.php yet)
 wp_core_download()
 {
@@ -34,7 +42,7 @@ wp_core_download()
 #generate config file
 wp_config_create()
 {
-	local DB_USER_PW=$(cat /run/secrets/DB_USER_PW)
+	local DB_USER_PW=$(cat /run/secrets/db_user_pw)
 	if [ ! -f /var/www/html/wp-config.php ]; then
 		echo -e "${MAG}Creating wp-config.php...${RES}"
 		wp config create --allow-root \
@@ -42,7 +50,7 @@ wp_config_create()
 			--dbname="${DB_NAME}" \
 			--dbuser="${DB_USER_NAME}" \
 			--dbpass="$DB_USER_PW" \
-			--dbhost="${DB_HOST}"
+			--dbhost="${DB_HOST}:${DB_PORT}"
 		echo -e "${GRE}Creating wp-config.php...Done!${RES}"
 	else
 		echo -e "${YEL}wp-config.php already exists${RES}"
@@ -52,13 +60,13 @@ wp_config_create()
 #install wp
 wp_core_install()
 {
-	local WP_ADM_PW=$(cat /run/secrets/WP_ADM_PW)
+	local WP_ADM_PW=$(cat /run/secrets/wp_adm_pw)
 	if ! wp core is-installed --allow-root --path=/var/www/html 2>/dev/null; then
 		echo -e "${MAG}Installing WordPress...${RES}"
 		wp core install --allow-root \
 			--path=/var/www/html/ \
 			--url="hsetyamu.42.fr" \
-			--title="Inception" \
+			--title="${WP_TITLE}" \
 			--admin_user="${WP_ADM_USER}" \
 			--admin_password="$WP_ADM_PW" \
 			--admin_email="${WP_ADM_EMAIL}" \
@@ -69,19 +77,37 @@ wp_core_install()
 	fi
 }
 
+wp_create_user()
+{
+	local WP_USER_PW=$(cat /run/secrets/wp_user_pw)
+	if ! wp user get "$WP_USER" --allow-root --path=/var/www/html 2> /dev/null; then
+		echo -e "${MAG}Creating user...${RES}"
+		wp user create "$WP_USER" "$WP_USER_EMAIL" \
+			--path=/var/www/html \
+			--role=editor \
+			--user_pass="$WP_USER_PW" \
+			--allow-root
+		echo -e "${GRE}Creating user...Done!${RES}"
+	else
+		echo -e "${YEL}Creating user fails!${RES}"
+	fi
+}
+
 #set permissions
 set_permissions()
 {
 	echo -e "${MAG}Setting permissions${RES}"
-	chown -R nobody:nobody /var/www/html
-	chmod -R u+rwx,go+rx /var/www/html
+	chown -R nobody:nogroup /var/www/html
+	chmod -R u=rwx,go=rx /var/www/html
 	echo -e "${GRE}Setting permissions...Done!${RES}"
 }
 
 change_limit
+setup_php_config
 wp_core_download
 wp_config_create
 wp_core_install
+wp_create_user
 set_permissions
 
 echo -e "${GRE}WordPress setup complete!${RES}"

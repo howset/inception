@@ -1,6 +1,7 @@
 [mariadbd]
 bind-address = 0.0.0.0
-#port = 3306 #unnecessary?
+#port = 3307 #can be changed to anything other than default (3306)
+#skip-external-locking #if multiple mdb instances try modify same file simultaneously
 #datadir = /var/lib/mysql #unnecessary?
 #socket = /run/mysqld/mysqld.sock #unnecessary?
 #skip-networking = 0 #unnecessary?

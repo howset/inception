@@ -16,13 +16,13 @@ echo -e "${CYA}Running mdb_init.sh${RES}"
 start_mdb_bg()
 {
 	echo -e "${MAG}Installing/running mdb daemon${RES}"
-	if [ ! -d /var/lib/mysql/mysql ]; then #create database
+	if [ ! -d /var/lib/mysql/mysql ]; then #create database (mysql is the standard)
 		mariadb-install-db --user=mysql --datadir=/var/lib/mysql
 	fi
 	mkdir -p /run/mysqld #-p avoids errors if it already exists
 	chown -R mysql:mysql /run/mysqld /var/lib/mysql #set mysql user and group
 	chmod u=rwx,g=,o= /run/mysqld #set permissions so only owner mysql can read/write/execute in dir to improve security.
-	mariadbd --user=mysql --datadir=/var/lib/mysql --skip-networking=0 & #mdb server daemon in bg, specify user, datadir, ensure networking is enabled
+	mariadbd --user=mysql --datadir=/var/lib/mysql --skip-networking=0 --port=${DB_PORT}& #mdb server daemon in bg, specify user, datadir, ensure networking is enabled
 	sleep 5
 	echo -e "${GRE}Installing/running mdb daemon...Done!${RES}"
 }
@@ -41,7 +41,7 @@ apply_msi()
 
 setup_db()
 {
-	local DB_USER_PW=$(cat /run/secrets/DB_USER_PW)
+	local DB_USER_PW=$(cat /run/secrets/db_user_pw)
 	echo -e "${MAG}Setting up the database${RES}"
 	mariadb -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};" #create db
 	mariadb -e "CREATE USER IF NOT EXISTS '${DB_USER_NAME}'@'%' IDENTIFIED BY '$DB_USER_PW';" #adds new user with password, allowing connection from any host ('%')
@@ -61,5 +61,5 @@ sleep 1
 echo -e "${GRE}MariaDB setup complete!${RES}"
 
 # Start MariaDB server in the foreground (PID 1)
-exec mariadbd --user=mysql --datadir=/var/lib/mysql
+exec mariadbd --user=mysql --datadir=/var/lib/mysql --port=${DB_PORT}
 # exec "$@"

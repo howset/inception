@@ -26,13 +26,10 @@ server {
 	location ~ \.php$ {
 		# Check if php file exists; if not, error 404 not found
 		try_files	$uri =404;
-
 		# Pass the .php files to the FPM listening on this address
-		fastcgi_pass	wordpress:9000;
-
+		fastcgi_pass	wordpress:${WP_PORT};
 		 # Set the script name
 		fastcgi_index	index.php;
-
 		# Include the necessary variables
 		include			fastcgi_params;
 		fastcgi_param	SCRIPT_FILENAME $document_root$fastcgi_script_name;
