@@ -33,6 +33,7 @@ create_dirs()
 # 		-subj "/C=DE/ST=Berlin/L=Berlin/O=42/CN=localhost" certificate subject information
 generate_ss_ssl()
 {
+	echo -e "${MAG}Generating self-signed certs...${RES}"
 	if [ ! -f /etc/nginx/ssl/server.crt ]; then
 		openssl req \
 			-x509 \
@@ -41,8 +42,12 @@ generate_ss_ssl()
 			-out /etc/nginx/ssl/server.crt \
 			-days 365 \
 			-nodes \
-			-subj "/C=DE/ST=Berlin/L=Berlin/O=42/CN=hsetyamu.42.fr"
+			-subj "/C=DE/ST=Berlin/L=Berlin/O=42/CN=${DOMAIN_NAME}"
+		echo -e "${GRE}Generating self-signed certs...Done!${RES}"
+	else
+		echo -e "${YEL}Found existing certs!${RES}"
 	fi
+	
 }
 
 #set permissions for SSL files
@@ -58,8 +63,11 @@ set_permissions()
 setup_nginx_config()
 {
 	echo -e "${MAG}Setting Nginx config (port)${RES}"
-	envsubst '${WP_PORT}' < /etc/nginx/http.d/secure.conf.template > /etc/nginx/http.d/secure.conf
+	sed -i "s|\${WP_PORT}|${WP_PORT}|g" /etc/nginx/http.d/secure.conf
 	echo -e "${GRE}Nginx config (port)...Done!${RES}"
+	echo -e "${MAG}Setting Nginx config (domain name)${RES}"
+	sed -i "s|\${DOMAIN_NAME}|${DOMAIN_NAME}|g" /etc/nginx/http.d/secure.conf
+	echo -e "${GRE}Nginx config (domain name)...Done!${RES}"
 }
 
 create_dirs

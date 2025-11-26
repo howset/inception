@@ -28,7 +28,7 @@ RUN apk update && apk add \
 	imagemagick \
 	icu-data-full \
 	mariadb-client \
-	curl nano gettext
+	curl nano
 
 #get wp-cli
 RUN curl -o /usr/local/bin/wp-cli.phar \
@@ -41,7 +41,7 @@ COPY ./tools/wp_init.sh /usr/local/bin/wp_init.sh
 RUN chmod +x /usr/local/bin/wp_init.sh
 
 #wp config, overwrite it later in the script
-COPY ./conf/wp.conf /etc/php83/php-fpm.d/www.conf.template
+COPY ./conf/wp.conf /etc/php83/php-fpm.d/www.conf
 
 #expose port (purely metadata)
 #EXPOSE 9000

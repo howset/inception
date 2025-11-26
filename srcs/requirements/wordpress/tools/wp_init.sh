@@ -16,15 +16,17 @@ echo -e "${CYA}Running wp_init.sh${RES}"
 #change memory limit
 change_limit()
 {
-	sed -i 's/^memory_limit = .*/memory_limit = 256M/' /etc/php83/php.ini
+	echo -e "${MAG}Changing memory limit...${RES}"
+	sed -i "s/^memory_limit = .*/memory_limit = 256M/" /etc/php83/php.ini
+	echo -e "${MAG}Changing memory limit...Done!${RES}"
 }
 
 ##substitute environment variables into php-fpm config (to change ports)
 setup_php_config()
 {
-	echo -e "${MAG}Setting php-fpm config (port)${RES}"
-	envsubst < /etc/php83/php-fpm.d/www.conf.template > /etc/php83/php-fpm.d/www.conf
-	echo -e "${GRE}php-fpm config (port)...Done!${RES}"
+	echo -e "${MAG}Setting php-fpm config (port)...${RES}"
+	sed -i "s|\${WP_PORT}|${WP_PORT}|g" /etc/php83/php-fpm.d/www.conf
+	echo -e "${GRE}Setting php-fpm config (port)...Done!${RES}"
 }
 
 #run core download (no wp-config.php yet)
@@ -60,16 +62,16 @@ wp_config_create()
 #install wp
 wp_core_install()
 {
-	local WP_ADM_PW=$(cat /run/secrets/wp_adm_pw)
+	local WP_MAD_PW=$(cat /run/secrets/wp_adm_pw)
 	if ! wp core is-installed --allow-root --path=/var/www/html 2>/dev/null; then
 		echo -e "${MAG}Installing WordPress...${RES}"
 		wp core install --allow-root \
 			--path=/var/www/html/ \
-			--url="hsetyamu.42.fr" \
+			--url="${DOMAIN_NAME}" \
 			--title="${WP_TITLE}" \
-			--admin_user="${WP_ADM_USER}" \
-			--admin_password="$WP_ADM_PW" \
-			--admin_email="${WP_ADM_EMAIL}" \
+			--admin_user="${WP_MAD_USER}" \
+			--admin_password="$WP_MAD_PW" \
+			--admin_email="${WP_MAD_EMAIL}" \
 			--skip-email
 		echo -e "${GRE}Installing WordPress...Done!${RES}"
 	else
@@ -93,6 +95,16 @@ wp_create_user()
 	fi
 }
 
+wp_configure_comments()
+{
+	echo -e "${MAG}Configure comment settings...${RES}"
+	#allow comments without approval
+	wp option update comment_moderation 0 --allow-root --path=/var/www/html
+	#enable comments by default on new posts
+	wp option update default_comment_status 'open' --allow-root --path=/var/www/html
+	echo -e "${GRE}Configure comment settings...Done!!${RES}"
+}
+
 #set permissions
 set_permissions()
 {
@@ -108,6 +120,7 @@ wp_core_download
 wp_config_create
 wp_core_install
 wp_create_user
+wp_configure_comments
 set_permissions
 
 echo -e "${GRE}WordPress setup complete!${RES}"
