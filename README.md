@@ -453,7 +453,7 @@ exec mariadbd --user=mysql --datadir=/var/lib/mysql --port=${DB_PORT}
 <details>
 <summary>🗟configs (mdb)</summary>
 
-```
+```sql
 [mariadbd]
 bind-address = 0.0.0.0
 #port = 3307 #can be changed to anything other than default (3306) --> use the script & .env to change
@@ -465,6 +465,61 @@ bind-address = 0.0.0.0
 </details>
 
 #### Exploring mdb
+<details>
+<summary>🗟open/test database</summary>
+
+```sql
+# Enter MariaDB container shell
+docker exec -it mdb_cont sh
+
+# Connect as root (password from secret)
+mysql -u root -p
+# (paste root password if you set one; if none, just press Enter)
+
+# List databases
+SHOW DATABASES;
+
+# Select WordPress DB
+USE ${DB_NAME};
+
+# List tables
+SHOW TABLES;
+
+# Inspect a table structure
+DESCRIBE wp_users;
+DESCRIBE wp_options;
+
+# Check stored site URL
+SELECT option_value FROM wp_options WHERE option_name='siteurl';
+
+# List users (MariaDB level)
+SELECT User, Host FROM mysql.user;
+
+# Show privileges for WP user
+SHOW GRANTS FOR '${DB_USER_NAME}'@'%';
+
+# Count posts/comments
+SELECT COUNT(*) FROM wp_posts WHERE post_type='post';
+SELECT COUNT(*) FROM wp_comments;
+
+# Insert test post directly (bypassing WP)
+INSERT INTO wp_posts (post_author, post_date, post_date_gmt, post_content, post_title,
+ post_status, comment_status, ping_status, post_name, post_type)
+VALUES (1, NOW(), NOW(), 'DB inserted content', 'DB Post', 'publish', 'open', 'closed', 'db-post', 'post');
+
+# Verify it appears
+SELECT ID, post_title, post_date FROM wp_posts ORDER BY ID DESC LIMIT 3;
+
+# Exit mysql client
+EXIT;
+
+# From host: quick connectivity test
+docker exec mdb_cont mysql -u ${DB_USER_NAME} -p$(cat secrets/db_user_pw) -e "SHOW TABLES;" ${DB_NAME}
+
+# Show server variables (sample)
+docker exec mdb_cont mysql -e "SHOW VARIABLES LIKE 'port';"
+```
+</details>
 
 ### Nginx
 - Follows basically similar idea with mdb.
