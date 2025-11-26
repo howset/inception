@@ -533,12 +533,6 @@ create_dirs()
 	mkdir -p /etc/nginx/ssl #to store SSL/TLS certificates and keys
 	mkdir -p /run/nginx #reate nginx run directory if it doesn't exist
 	echo -e "${GRE}Creating directories...Done!${RES}"
-}set_permissions()
-{
-	echo -e "${MAG}Setting permissions${RES}"
-	chmod u=rw,go= /etc/nginx/ssl/server.key
-	chmod u=rw,g=r,o=r /etc/nginx/ssl/server.crt
-	echo -e "${GRE}Setting permissions...Done!${RES}"
 }
 
 #generate self-signed SSL certificate if it doesn't exist
@@ -552,6 +546,7 @@ create_dirs()
 # 		-subj "/C=DE/ST=Berlin/L=Berlin/O=42/CN=localhost" certificate subject information
 generate_ss_ssl()
 {
+	echo -e "${MAG}Generating self-signed certs...${RES}"
 	if [ ! -f /etc/nginx/ssl/server.crt ]; then
 		openssl req \
 			-x509 \
@@ -560,8 +555,12 @@ generate_ss_ssl()
 			-out /etc/nginx/ssl/server.crt \
 			-days 365 \
 			-nodes \
-			-subj "/C=DE/ST=Berlin/L=Berlin/O=42/CN=hsetyamu.42.fr"
+			-subj "/C=DE/ST=Berlin/L=Berlin/O=42/CN=${DOMAIN_NAME}"
+		echo -e "${GRE}Generating self-signed certs...Done!${RES}"
+	else
+		echo -e "${YEL}Found existing certs!${RES}"
 	fi
+	
 }
 
 #set permissions for SSL files
@@ -577,8 +576,11 @@ set_permissions()
 setup_nginx_config()
 {
 	echo -e "${MAG}Setting Nginx config (port)${RES}"
-	envsubst '${WP_PORT}' < /etc/nginx/http.d/secure.conf.template > /etc/nginx/http.d/secure.conf
+	sed -i "s|\${WP_PORT}|${WP_PORT}|g" /etc/nginx/http.d/secure.conf
 	echo -e "${GRE}Nginx config (port)...Done!${RES}"
+	echo -e "${MAG}Setting Nginx config (domain name)${RES}"
+	sed -i "s|\${DOMAIN_NAME}|${DOMAIN_NAME}|g" /etc/nginx/http.d/secure.conf
+	echo -e "${GRE}Nginx config (domain name)...Done!${RES}"
 }
 
 create_dirs
@@ -608,7 +610,7 @@ server {
 	listen	[::]:443 ssl;
 
 	#which domain to respond
-	server_name hsetyamu.42.fr localhost;
+	server_name ${DOMAIN_NAME} localhost;
 
 	#SSL certs-key & TLS
 	ssl_certificate_key			/etc/nginx/ssl/server.key;
@@ -644,7 +646,7 @@ server {
 server {
 	listen 80;
 	listen [::]:80;
-	server_name hsetyamu.42.fr localhost;
+	server_name ${DOMAIN_NAME} localhost;
 	return 301 https://$server_name$request_uri;
 }
 ```
@@ -744,15 +746,17 @@ echo -e "${CYA}Running wp_init.sh${RES}"
 #change memory limit
 change_limit()
 {
-	sed -i 's/^memory_limit = .*/memory_limit = 256M/' /etc/php83/php.ini
+	echo -e "${MAG}Changing memory limit...${RES}"
+	sed -i "s/^memory_limit = .*/memory_limit = 256M/" /etc/php83/php.ini
+	echo -e "${MAG}Changing memory limit...Done!${RES}"
 }
 
 ##substitute environment variables into php-fpm config (to change ports)
 setup_php_config()
 {
-	echo -e "${MAG}Setting php-fpm config (port)${RES}"
-	envsubst < /etc/php83/php-fpm.d/www.conf.template > /etc/php83/php-fpm.d/www.conf
-	echo -e "${GRE}php-fpm config (port)...Done!${RES}"
+	echo -e "${MAG}Setting php-fpm config (port)...${RES}"
+	sed -i "s|\${WP_PORT}|${WP_PORT}|g" /etc/php83/php-fpm.d/www.conf
+	echo -e "${GRE}Setting php-fpm config (port)...Done!${RES}"
 }
 
 #run core download (no wp-config.php yet)
@@ -788,16 +792,16 @@ wp_config_create()
 #install wp
 wp_core_install()
 {
-	local WP_ADM_PW=$(cat /run/secrets/wp_adm_pw)
+	local WP_MAD_PW=$(cat /run/secrets/wp_adm_pw)
 	if ! wp core is-installed --allow-root --path=/var/www/html 2>/dev/null; then
 		echo -e "${MAG}Installing WordPress...${RES}"
 		wp core install --allow-root \
 			--path=/var/www/html/ \
-			--url="hsetyamu.42.fr" \
+			--url="${DOMAIN_NAME}" \
 			--title="${WP_TITLE}" \
-			--admin_user="${WP_ADM_USER}" \
-			--admin_password="$WP_ADM_PW" \
-			--admin_email="${WP_ADM_EMAIL}" \
+			--admin_user="${WP_MAD_USER}" \
+			--admin_password="$WP_MAD_PW" \
+			--admin_email="${WP_MAD_EMAIL}" \
 			--skip-email
 		echo -e "${GRE}Installing WordPress...Done!${RES}"
 	else
@@ -821,6 +825,16 @@ wp_create_user()
 	fi
 }
 
+wp_configure_comments()
+{
+	echo -e "${MAG}Configure comment settings...${RES}"
+	#allow comments without approval
+	wp option update comment_moderation 0 --allow-root --path=/var/www/html
+	#enable comments by default on new posts
+	wp option update default_comment_status 'open' --allow-root --path=/var/www/html
+	echo -e "${GRE}Configure comment settings...Done!!${RES}"
+}
+
 #set permissions
 set_permissions()
 {
@@ -836,6 +850,7 @@ wp_core_download
 wp_config_create
 wp_core_install
 wp_create_user
+wp_configure_comments
 set_permissions
 
 echo -e "${GRE}WordPress setup complete!${RES}"
@@ -892,7 +907,6 @@ php_value[memory_limit] = 512M
 <summary>🗟docker-compose.yml</summary>
 
 ```docker
-
 services:
   mariadb:
     image: mdb:inc42
