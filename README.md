@@ -280,7 +280,7 @@ Reqs:
 
 ## Docker containers
 - The base image can basically be from anything, either from debian:bookworm or alpine:3.21.1 as long as the kernel is the same (linux), the difference is the size of the image using alpine ended up smaller than debian (~200 MB vs ~500 MB), and some adjustments also has to be made due to some differences between the systems (e.g. alpine has no bash by default).
-- __EXPOSE__ in dockerfiles means nothing other than metadata for documentation. Since this project doesnt really say anything the port to be used for connections between the containers (other than in the diagram, which uses the default ports for the services i.e. mariadb 3306 and php-fpm 9000), so using the defaults would work just fine, namely not defining anything in the dockerfile (See Docker Compose below).
+- __EXPOSE__ in dockerfiles means nothing other than metadata for documentation. Since this project doesnt really say anything about the port to be used for connections between the containers (other than in the diagram, which uses the default ports for the services i.e. mariadb 3306 and php-fpm 9000), using the defaults would work just fine, namely not defining anything in the dockerfile (See Docker Compose below).
 - Useful but can be confusing commands:[^6]
 <details>
 <summary>🗟Click to expand table of commands</summary>
@@ -464,13 +464,15 @@ bind-address = 0.0.0.0
 ```
 </details>
 
+#### Exploring mdb
+
 ### Nginx
 - Follows basically similar idea with mdb.
 - the security cert is generated at runtime which are advantegeous in respect:
 	- no key stored in the git repo
 	- each environment gets a unique key (cluster comp, laptop, vm)
 	- destroyed with docker-compose down -v, regenerated fresh
-- but of course unstable and not reflective of real situation (that uses CA - Certificate Authority)
+- but of course unstable (changes all the time) and not reflective of real situation (that uses CA - Certificate Authority)
 
 #### Dockerfile
 -- Similar with mdb --
@@ -486,7 +488,7 @@ FROM alpine:3.21.1
 RUN apk update && apk add \
 	nginx \
 	openssl \
-	nano curl gettext
+	nano curl
 
 #init script
 COPY ./tools/nginx_init.sh /usr/local/bin/nginx_init.sh
@@ -648,6 +650,9 @@ server {
 ```
 </details>
 
+#### Exploring nginx
+I dont know what to do here other than checking `nginx -t #check nginx config file`.
+
 ### Wordpress
 #### Dockerfile
 - install lots of packages because alpine (debian only installs sevreal i think).
@@ -686,7 +691,7 @@ RUN apk update && apk add \
 	imagemagick \
 	icu-data-full \
 	mariadb-client \
-	curl nano gettext
+	curl nano
 
 #get wp-cli
 RUN curl -o /usr/local/bin/wp-cli.phar \
@@ -880,6 +885,8 @@ php_value[memory_limit] = 512M
 ```
 </details>
 
+#### Exploring wp
+
 ### Docker Compose
 <details>
 <summary>🗟docker-compose.yml</summary>
@@ -998,10 +1005,10 @@ secrets:
 #### Worth mentioning
 - __.env__[^20] useful to put all variables that can be easily changed (but not sensitive info because it can be inspected. 
 - __Secrets__[^19] are case sensitive, filename and such, be careful. Useful for sensitive info (passwords) --> does not show with `docker inspect [container]`.
-- __Healthcheck__ just an arbitrary test parameter to run periodically. A repeated 0 exit status of the check means healthy. 
+- __Healthcheck__ just an arbitrary (can be anything, hopefully relevant) test parameter to run periodically. A repeated 0 exit status of the check means healthy. 
 - __depends-on__ useful to start (NOT create) a service __after__ another (healthy) service has been started.
 - __ports__ publishing ports outside the network. `docker ps` lists only the json file, and EXPOSE in the dockerfile just writes the metadata to this file. Without EXPOSE in the dockerfiles, intercontainer communication is left to the default of each services. This can be checked by `docker exec [container] netstat -tnl`.
-- on topic of ports, leaving the default is definitely the best practice. Changing them is unnecessarily tangled since it involves changing the configurations of the related containers, e.g mdb <--port--> wp or wp(php-fpm) <--port--> nginx, though however, the definition can be conviniently put as environmental variable in .env file. I do it because I'm already in too deep here. So as it stands currently, the script and docker-compose files are more complicated as they should be because i need to add a functionality (`envsubst`) to change the content of the config file on the fly which in turn requires the installation of another package (`gettext`) and providing unnecessary clutter to the docker-compose because i have to specify the env vars.
+- on topic of ports, leaving the default is definitely the best practice. Changing them is unnecessarily tangled since it involves changing the configurations of the related containers, e.g mdb <--port--> wp or wp(php-fpm) <--port--> nginx, though however, the definition can be conviniently put as environmental variable in .env file. I do it because I'm already in too deep here. So as it stands currently, the script and docker-compose files are more complicated as they should be ~~because i need to add a functionality (`envsubst`) to change the content of the config file on the fly which in turn requires the installation of another package (`gettext`) and providing unnecessary clutter to the docker-compose because i have to specify the env vars.~~ now just use sed, avoid installing a new package, but just as unnecessarily tangled.
 
 ### Notes
 - I decided to just use the initsrcipt on each dockerfile as the ENTRYPOINT and ditched CMD (along with `exec "$@"` in the script) because although that works fine for mdb and nginx but wp the PID 1 would just be the script :
@@ -1037,8 +1044,8 @@ nc -zv #z = zero-I/O mode (just check if port is open, don't send/receive ), v =
 curl -kfI #k = skip verifyng certs, f = fail silently on errors (exit code 22 on 4xx/5xx), I = headers only
 set -e #when (any) command fails, exit immediately
 echo -e #enable interpretation of backslahes, for colours
-nginx -t #check nginx config file
-envsubst #substitutes environment variables in shell format strings
+envsubst #substitutes environment variables in shell format strings, not used anymore
+curl -v http://localhost:80 #just check the result of a connection
 ```
 ## Evals
 
