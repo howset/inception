@@ -8,8 +8,15 @@ MAG:=\033[0;35m
 CYA:=\033[0;36m
 RES:=\033[0m
 
+#Variables
 #Specify docker compose
 DOCKER_COMPOSE := docker-compose -f ./srcs/docker-compose.yml
+# Containers
+# WP_CONT := wp_cont
+# NGINX_CONT := nginx_cont
+# # Where to mount the static page under WP's docroot
+# STATIC_PATH := /var/www/html/jumper
+# STATIC_SRC := bonus/static_page
 
 ##------------------------------------------------------------------##
 #Targets
@@ -51,5 +58,9 @@ list:
 	@echo -e "${GRE}== Volumes ==${RES}" && docker volume ls
 	@echo -e "${YEL}== Networks ==${RES}" && docker network ls
 
+bonus: all
+	@chmod +x ./bonus/static_page/staticp_init.sh
+	@sh ./bonus/static_page/staticp_init.sh
+
 ##------------------------------------------------------------------##
-.PHONY: all build up ps logs down clean fclean re list
+.PHONY: all build up ps logs down clean fclean re list bonus

@@ -62,7 +62,7 @@ wp_config_create()
 #install wp
 wp_core_install()
 {
-	local WP_MAD_PW=$(cat /run/secrets/wp_adm_pw)
+	local WP_MAD_PW=$(cat /run/secrets/wp_mad_pw)
 	if ! wp core is-installed --allow-root --path=/var/www/html 2>/dev/null; then
 		echo -e "${MAG}Installing WordPress...${RES}"
 		wp core install --allow-root \
@@ -95,6 +95,7 @@ wp_create_user()
 	fi
 }
 
+#currently still ineffective
 wp_configure_comments()
 {
 	echo -e "${MAG}Configure comment settings...${RES}"

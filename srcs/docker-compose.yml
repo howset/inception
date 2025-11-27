@@ -17,7 +17,7 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
-      interval: 20s
+      interval: 10s
       timeout: 5s
       retries: 3
     secrets:
@@ -53,8 +53,8 @@ services:
       test: ["CMD-SHELL", "netstat -tnlp | grep :${WP_PORT} || exit 1"]
       #test: ["CMD-SHELL", "test -S /run/php-fpm.sock || exit 1"]
       #test: ["CMD-SHELL", "wp core is-installed --allow-root --path=/var/www/html > /dev/null 2>&1 || exit 1"]
-      interval: 20s
-      timeout: 5s
+      interval: 5s
+      timeout: 2s
       retries: 3
     secrets:
       - db_user_pw
@@ -81,12 +81,12 @@ services:
         condition: service_healthy
     restart: unless-stopped
     ports:
-      #- "80:80"
+      - "80:80"
       - "443:443"
     healthcheck:
       test: ["CMD", "curl", "-kfI", "https://localhost:443"]
-      interval: 20s
-      timeout: 5s
+      interval: 3s
+      timeout: 2s
       retries: 3
 
 volumes:
