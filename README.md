@@ -42,6 +42,7 @@
 - https://hub.docker.com/_/nginx
 - https://hub.docker.com/_/mariadb
 - https://hub.docker.com/_/wordpress
+- 🥇 https://github.com/cfareste/Inception
 
 ## VM setup & OS installation:
 Steps that were taken to prepare the VM[^1][^2].
@@ -59,10 +60,11 @@ Reqs:
 - Specify folder in `sgoinfre`
 - Specify:
 	```
-	memory 4096MB
+	memory 4096MB --> 2048 actually suffices
 	HD 20GB
-	processors 4
+	processors 4 --> 1 is enough
 	```
+	Actually allocating too much would just make the startup slower, alpine linux is crazy small. The large allocation just make more initialization overhead.
 - Go to settings, storage
 - Put the iso in the optical drive (choose other linux 64).
 
@@ -1116,6 +1118,13 @@ echo -e #enable interpretation of backslahes, for colours
 envsubst #substitutes environment variables in shell format strings, not used anymore
 curl -v http://localhost:80 #just check the result of a connection
 ```
+
+## Bonus
+### Static page
+- Made a mock cv page by pirating a freely available template from the interwebs.
+- Copy it to `wp_vol` and make a directory there.
+- 
+
 ## Evals
 
 
