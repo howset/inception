@@ -11,12 +11,6 @@ RES:=\033[0m
 #Variables
 #Specify docker compose
 DOCKER_COMPOSE := docker-compose -f ./srcs/docker-compose.yml
-# Containers
-# WP_CONT := wp_cont
-# NGINX_CONT := nginx_cont
-# # Where to mount the static page under WP's docroot
-# STATIC_PATH := /var/www/html/jumper
-# STATIC_SRC := bonus/static_page
 
 ##------------------------------------------------------------------##
 #Targets
