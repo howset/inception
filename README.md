@@ -1126,7 +1126,9 @@ curl -v http://localhost:80 #just check the result of a connection
 - 
 
 ## Evals
-
+- make aware:
+	- homepage has no links to static page __BEFORE__ bonus
+	- wp-admin plugins has no redis __BEFORE__ bonus
 
 ## Terminology overload
 🐳 Docker & Containers
