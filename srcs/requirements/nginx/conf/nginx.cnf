@@ -19,7 +19,7 @@ server {
 
 	#match every possible request (/) & check if file exists, if not then index at a directory, if still not found then 404
 	location / {
-		try_files	$uri $uri/ =404;
+		try_files	$uri $uri/ /index.php?$args;
 	}
 
 	# Directive for every request that finishes with .php

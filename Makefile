@@ -11,6 +11,12 @@ RES:=\033[0m
 #Variables
 #Specify docker compose
 DOCKER_COMPOSE := docker-compose -f ./srcs/docker-compose.yml
+# Containers
+# WP_CONT := wp_cont
+# NGINX_CONT := nginx_cont
+# # Where to mount the static page under WP's docroot
+# STATIC_PATH := /var/www/html/jumper
+# STATIC_SRC := bonus/static_page
 
 ##------------------------------------------------------------------##
 #Targets
@@ -37,11 +43,11 @@ down:
 
 #Down and remove images
 clean: 
-	$(DOCKER_COMPOSE) down --rmi all --remove-orphans
+	$(DOCKER_COMPOSE) --profile bonus down --rmi all --remove-orphans
 
 #Full clean: remove containers, networks, volumes, and images
 fclean:
-	$(DOCKER_COMPOSE) down --rmi all -v --remove-orphans
+	$(DOCKER_COMPOSE) --profile bonus down --rmi all -v --remove-orphans
 
 re: fclean all
 
@@ -53,8 +59,10 @@ list:
 	@echo -e "${YEL}== Networks ==${RES}" && docker network ls
 
 bonus: all
-	@chmod +x ./bonus/static_page/staticp_init.sh
-	@sh ./bonus/static_page/staticp_init.sh
+	$(DOCKER_COMPOSE) --profile bonus up -d --build staticpage
+# 	chmod +x ./bonus/static_page/tools/link_setup.sh
+	./bonus/static_page/tools/link_setup.sh
+	
 
 ##------------------------------------------------------------------##
 .PHONY: all build up ps logs down clean fclean re list bonus

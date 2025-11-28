@@ -42,7 +42,8 @@ generate_ss_ssl()
 			-out /etc/nginx/ssl/server.crt \
 			-days 365 \
 			-nodes \
-			-subj "/C=DE/ST=Berlin/L=Berlin/O=42/CN=${DOMAIN_NAME}"
+			-subj "/C=DE/ST=Berlin/L=Berlin/O=42/CN=${DOMAIN_NAME}" \
+			-addext "subjectAltName=DNS:${DOMAIN_NAME},DNS:localhost"
 		echo -e "${GRE}Generating self-signed certs...Done!${RES}"
 	else
 		echo -e "${YEL}Found existing certs!${RES}"

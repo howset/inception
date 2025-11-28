@@ -89,6 +89,18 @@ services:
       timeout: 2s
       retries: 3
 
+  staticpage:
+    profiles: ["bonus"]
+    build:
+      context: ../bonus/static_page
+      dockerfile: Dockerfile
+    container_name: staticp_cont
+    volumes:
+      - wp_data:/var/www/html
+    networks:
+      - inception_network
+    restart: "no"
+
 volumes:
   mdb_data:
     name: mdb_vol

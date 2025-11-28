@@ -95,14 +95,10 @@ wp_create_user()
 	fi
 }
 
-#currently still ineffective
 wp_configure_comments()
 {
 	echo -e "${MAG}Configure comment settings...${RES}"
-	#allow comments without approval
-	wp option update comment_moderation 0 --allow-root --path=/var/www/html
-	#enable comments by default on new posts
-	wp option update default_comment_status 'open' --allow-root --path=/var/www/html
+	wp option update comment_whitelist 0 --allow-root --path=/var/www/html
 	echo -e "${GRE}Configure comment settings...Done!!${RES}"
 }
 
