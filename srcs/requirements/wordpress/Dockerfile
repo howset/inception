@@ -3,7 +3,7 @@ FROM alpine:3.21.1
 #FROM public.ecr.aws/docker/library/alpine:3.21.1
 
 #install php-fpm & utils
-RUN apk update && apk add \
+RUN apk update && apk add --no-cache\
 	php83 \
 	php83-fpm \
 	php83-mysqli \

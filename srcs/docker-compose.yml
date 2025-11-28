@@ -13,7 +13,7 @@ services:
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
     networks:
-      - inception_network
+      - inc_net
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
@@ -44,7 +44,7 @@ services:
       WP_USER: ${WP_USER}
       WP_USER_EMAIL: ${WP_USER_EMAIL}
     networks:
-      - inception_network
+      - inc_net
     depends_on:
       mariadb:
         condition: service_healthy
@@ -73,7 +73,7 @@ services:
       DOMAIN_NAME: ${DOMAIN_NAME}
       WP_PORT: ${WP_PORT}
     networks:
-      - inception_network
+      - inc_net
     depends_on:
       wordpress:
         condition: service_healthy
@@ -91,6 +91,7 @@ services:
 
   staticpage:
     profiles: ["bonus"]
+    image: staticpage:inc42
     build:
       context: ../bonus/static_page
       dockerfile: Dockerfile
@@ -98,8 +99,29 @@ services:
     volumes:
       - wp_data:/var/www/html
     networks:
-      - inception_network
+      - inc_net
     restart: "no"
+
+  redis:
+    profiles: ["bonus"]
+    image: redis:inc42
+    build:
+      context: ../bonus/redis
+      dockerfile: Dockerfile
+    container_name: redis_cont
+    volumes:
+    - redis_data:/data
+    networks:
+      - inc_net
+    depends_on:
+      wordpress:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 2s
+      retries: 3
 
 volumes:
   mdb_data:
@@ -108,10 +130,13 @@ volumes:
   wp_data:
     name: wp_vol
     driver: local
+  redis_data:
+    name: redis_vol
+    driver: local
 
 networks:
-  inception_network:
-    name: inception_network
+  inc_net:
+    name: inc_net
     driver: bridge
 
 secrets:

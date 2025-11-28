@@ -37,6 +37,9 @@ ps:
 logs:
 	$(DOCKER_COMPOSE) logs
 
+logs-bonus:
+	$(DOCKER_COMPOSE) --profile bonus logs
+
 #Stop and remove cintainers (and network)
 down:
 	$(DOCKER_COMPOSE) down
@@ -60,9 +63,9 @@ list:
 
 bonus: all
 	$(DOCKER_COMPOSE) --profile bonus up -d --build staticpage
-# 	chmod +x ./bonus/static_page/tools/link_setup.sh
 	./bonus/static_page/tools/link_setup.sh
-	
+	$(DOCKER_COMPOSE) --profile bonus up -d --build redis
+	$(DOCKER_COMPOSE) up -d --force-recreate wordpress
 
 ##------------------------------------------------------------------##
 .PHONY: all build up ps logs down clean fclean re list bonus

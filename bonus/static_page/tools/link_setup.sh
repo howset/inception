@@ -16,25 +16,24 @@ echo -e "${CYA}Running link_setup.sh${RES}"
 creating_link()
 {
 	echo -e "${MAG}Creating link...${RES}"
-	docker exec wp_cont wp post create \
-		--post_type=wp_navigation \
-		--post_status=publish \
-		--post_title="Main Navigation" \
-		--post_content='<!-- wp:navigation-link {"label":"Mock Résumé","url":"https://localhost/jumper/"} /-->' \
-		--allow-root --path=/var/www/html
+	# if [ docker exec wp_cont wp post list --post_type=wp_navigation --allow-root --path=/var/www/html | wc -l]; then
+		docker exec wp_cont wp post create \
+			--post_type=wp_navigation \
+			--post_status=publish \
+			--post_title="Main Navigation" \
+			--post_content='<!-- wp:navigation-link {"label":"Mock Résumé","url":"https://localhost/jumper/"} /-->' \
+			--allow-root --path=/var/www/html
+	# else
+	# 	NAV_ID=$(docker exec wp_cont wp post list --post_type=wp_navigation --field=ID --allow-root --path=/var/www/html | head -1)
+	# 	docker exec wp_cont wp post get $NAV_ID --field=post_content --allow-root --path=/var/www/html | grep -q 'https://localhost/jumper/' || \
+	# 	docker exec wp_cont wp post update $NAV_ID \
+	# 	  --post_content="$(docker exec wp_cont wp post get $NAV_ID --field=post_content --allow-root --path=/var/www/html)
+	# 	<!-- wp:navigation-link {\"label\":\"Mock Résumé\",\"url\":\"https://localhost/jumper/\"} /-->" \
+	# 	  --allow-root --path=/var/www/html
+	# fi
 	echo -e "${GRE}Creating link...Done!${RES}"
 }
 
 creating_link
 
 echo -e "${GRE}New link is set up.${RES}"
-
-
-# docker exec wp_cont wp post list --post_type=wp_navigation --allow-root --path=/var/www/html
-# 
-# NAV_ID=$(docker exec wp_cont wp post list --post_type=wp_navigation --field=ID --allow-root --path=/var/www/html | head -1)
-# docker exec wp_cont wp post get $NAV_ID --field=post_content --allow-root --path=/var/www/html | grep -q 'https://localhost/jumper/' || \
-# docker exec wp_cont wp post update $NAV_ID \
-#   --post_content="$(docker exec wp_cont wp post get $NAV_ID --field=post_content --allow-root --path=/var/www/html)
-# <!-- wp:navigation-link {\"label\":\"Mock Résumé\",\"url\":\"https://localhost/jumper/\"} /-->" \
-#   --allow-root --path=/var/www/html

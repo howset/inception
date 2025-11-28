@@ -21,7 +21,7 @@ change_limit()
 	echo -e "${MAG}Changing memory limit...Done!${RES}"
 }
 
-##substitute environment variables into php-fpm config (to change ports)
+#substitute environment variables into php-fpm config (to change ports)
 setup_php_config()
 {
 	echo -e "${MAG}Setting php-fpm config (port)...${RES}"
@@ -111,6 +111,19 @@ set_permissions()
 	echo -e "${GRE}Setting permissions...Done!${RES}"
 }
 
+#if redis_cont is up, then install plugin in the wp_cont side, set it up, and enable it.
+connect_redis()
+{
+	if nc -zv redis 6379 >/dev/null 2>&1; then
+		echo -e "${MAG}Connecting redis...${RES}"
+		wp plugin install redis-cache --activate --allow-root --path=/var/www/html
+		wp config set WP_REDIS_HOST redis --allow-root --path=/var/www/html
+		wp config set WP_REDIS_PORT 6379 --raw --allow-root --path=/var/www/html
+		wp redis enable --allow-root --path=/var/www/html
+		echo -e "${GRE}Connecting redis...Done!${RES}"
+	fi
+}
+
 change_limit
 setup_php_config
 wp_core_download
@@ -119,6 +132,7 @@ wp_core_install
 wp_create_user
 wp_configure_comments
 set_permissions
+connect_redis
 
 echo -e "${GRE}WordPress setup complete!${RES}"
 
