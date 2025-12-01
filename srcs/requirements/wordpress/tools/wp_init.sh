@@ -111,7 +111,7 @@ set_permissions()
 	echo -e "${GRE}Setting permissions...Done!${RES}"
 }
 
-#if redis_cont is up, then install plugin in the wp_cont side, set it up, and enable it.
+#if redis_cont is up, then install plugin in the wp_cont side, set it up, and enable it. (bonus)
 connect_redis()
 {
 	if nc -zv redis 6379 >/dev/null 2>&1; then

@@ -123,6 +123,26 @@ services:
       timeout: 2s
       retries: 3
 
+  adminer:
+    profiles: ["bonus"]
+    image: adminer:inc42
+    build:
+      context: bonus/adminer
+      dockerfile: Dockerfile
+    container_name: adminer_cont
+    networks:
+      - inc_net
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      # start_period: 10s
+
 volumes:
   mdb_data:
     name: mdb_vol

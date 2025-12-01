@@ -68,6 +68,8 @@ bonus: all
 #	redis
 	$(DOCKER_COMPOSE) --profile bonus up -d --build redis
 	$(DOCKER_COMPOSE) up -d --force-recreate wordpress
+#	adminer
+	$(DOCKER_COMPOSE) --profile bonus up -d --build adminer
 
 ##------------------------------------------------------------------##
 .PHONY: all build up ps logs down clean fclean re list bonus
