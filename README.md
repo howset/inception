@@ -1126,7 +1126,63 @@ curl -v http://localhost:80 #just check the result of a connection
 ### Static page
 - Made a mock cv page by pirating a freely available template from the interwebs.
 - Copy it to `wp_vol` and make a directory there.
+- Add a link to the wp homepage to the new static page.
+
+### Redis cache
 - redis is a caching server plugin for wordpress that is setup in its own container but the connection has to be established from the worpress side. 
+- has a volume
+
+### Adminer
+- just one file.
+- access and display the database (use the credentials in .env and secrets. server is mariadb).
+- add a location in nginx config to accomodate this.
+
+### FTP server
+```
+ftp localhost 21
+# Username: ftpuser
+# Password: (from secrets/ftp_password)
+
+# List files
+ls
+
+# Navigate to WordPress
+cd wordpress
+
+# Download a file
+get wp-config.php
+
+# Upload a file
+put test.txt
+
+# Exit
+bye
+```
+
+
+```
+# Install lftp
+sudo apt install lftp  # Ubuntu/Debian
+sudo apk add lftp      # Alpine
+
+# Connect
+lftp -u ftpuser,your_password ftp://localhost:21
+
+# List files
+ls
+
+# Mirror directory (download)
+mirror wordpress /local/path
+
+# Upload directory
+mirror -R /local/path wordpress
+
+# Exit
+exit
+```
+
+- or just use filezilla
+- make secure or not? maybe not.
 
 ## Evals
 - make aware:
