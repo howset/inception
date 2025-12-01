@@ -152,6 +152,9 @@ Reqs:
 	$> sudo apk update #just good practice 4 any distro
 	$> sudo apk add docker docker-cli-compose docker-compose
 	```
+	- `docker` is the core docker engine
+	- `docker-cli-compose` is the compose plugin (`Docker Compose`)
+	- `docker-compose` deprecated, can be skipped.
 - Update it
 	```sh
 	$> sudo apk add --update docker openrc
@@ -1123,7 +1126,7 @@ curl -v http://localhost:80 #just check the result of a connection
 ### Static page
 - Made a mock cv page by pirating a freely available template from the interwebs.
 - Copy it to `wp_vol` and make a directory there.
-- 
+- redis is a caching server plugin for wordpress that is setup in its own container but the connection has to be established from the worpress side. 
 
 ## Evals
 - make aware:
