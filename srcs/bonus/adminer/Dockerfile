@@ -24,3 +24,4 @@ WORKDIR /usr/share
 #use the init script as entrypoint
 #ENTRYPOINT ["/usr/local/bin/mdb_init.sh"]
 CMD ["php", "-S", "0.0.0.0:8080", "-t", "/usr/share", "adminer.php"]
+# -S specify addr:port, -t specify document root
