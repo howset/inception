@@ -93,7 +93,7 @@ services:
     profiles: ["bonus"]
     image: staticpage:inc42
     build:
-      context: ../bonus/static_page
+      context: bonus/static_page
       dockerfile: Dockerfile
     container_name: staticp_cont
     volumes:
@@ -106,7 +106,7 @@ services:
     profiles: ["bonus"]
     image: redis:inc42
     build:
-      context: ../bonus/redis
+      context: bonus/redis
       dockerfile: Dockerfile
     container_name: redis_cont
     volumes:
