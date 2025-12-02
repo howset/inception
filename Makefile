@@ -60,9 +60,10 @@ bonus: all
 	./srcs/bonus/static_page/tools/link_setup.sh
 #	redis
 	$(DOCKER_COMPOSE) --profile bonus up -d --build redis
-	$(DOCKER_COMPOSE) up -d --force-recreate wordpress
+	$(DOCKER_COMPOSE) up -d --force-recreate --no-deps wordpress
 #	adminer
 	$(DOCKER_COMPOSE) --profile bonus up -d --build adminer
+	$(DOCKER_COMPOSE) up -d --force-recreate --no-deps nginx
 #	vsftpd
 	$(DOCKER_COMPOSE) --profile bonus up -d --build vsftpd
 

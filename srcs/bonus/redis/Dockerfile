@@ -6,6 +6,10 @@ FROM alpine:3.21.1
 RUN apk update && apk add --no-cache\
 	redis
 
+#init script
+COPY tools/redis_init.sh /usr/local/bin/redis_init.sh
+RUN chmod +x /usr/local/bin/redis_init.sh
+
 #create dir for redis data
 RUN mkdir -p /data && chown redis:redis /data
 
@@ -13,8 +17,5 @@ RUN mkdir -p /data && chown redis:redis /data
 #EXPOSE 6379
 
 #use the init script as entrypoint
-#ENTRYPOINT ["/usr/local/bin/mdb_init.sh"]
-CMD [ "redis-server", "--bind", "0.0.0.0", "--protected-mode", "no", "--dir", "/data" ]
-
-#protected mode is no bcause redis is isolated on inception_net,
-# not exposed to host, so authentication is not required
+ENTRYPOINT ["/usr/local/bin/redis_init.sh"]
+#CMD [ "redis-server", "--bind", "0.0.0.0", "--protected-mode", "no", "--dir", "/data" ]

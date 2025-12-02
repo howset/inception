@@ -16,7 +16,8 @@ services:
       - inc_net
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
+      # test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "netstat -tuln | grep :${DB_PORT}"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -50,8 +51,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "netstat -tnlp | grep :${WP_PORT} || exit 1"]
-      #test: ["CMD-SHELL", "test -S /run/php-fpm.sock || exit 1"]
+      test: ["CMD-SHELL", "netstat -tnlp | grep :${WP_PORT}"]
       #test: ["CMD-SHELL", "wp core is-installed --allow-root --path=/var/www/html > /dev/null 2>&1 || exit 1"]
       interval: 5s
       timeout: 2s
@@ -84,7 +84,8 @@ services:
       - "80:80"
       - "443:443"
     healthcheck:
-      test: ["CMD", "curl", "-kfI", "https://localhost:443"]
+      # test: ["CMD", "curl", "-kfI", "https://localhost:443"]
+      test: ["CMD-SHELL", "netstat -tuln | grep :443"]
       interval: 3s
       timeout: 2s
       retries: 3
@@ -118,7 +119,8 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      # test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "netstat -tuln | grep :6379"]
       interval: 5s
       timeout: 2s
       retries: 3
@@ -137,7 +139,7 @@ services:
       mariadb:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080"]
+      test: ["CMD-SHELL", "netstat -tuln | grep :8080"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -153,7 +155,7 @@ services:
       - "21:21"
       - "21000-21010:21000-21010"
     volumes:
-      - wp_data:/var/www/html
+      - wp_data:/home/${FTP_USER}/wordpress
     networks:
       - inc_net
     environment:
@@ -165,7 +167,7 @@ services:
       wordpress:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "sh", "-c", "netstat -tuln | grep -q ':21 '"]
+      test: ["CMD-SHELL", "netstat -tuln | grep :21"]
       interval: 10s
       timeout: 5s
       retries: 3

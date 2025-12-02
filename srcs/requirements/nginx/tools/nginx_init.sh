@@ -71,10 +71,22 @@ setup_nginx_config()
 	echo -e "${GRE}Nginx config (domain name)...Done!${RES}"
 }
 
+check_bonus_setup()
+{
+	echo -e "${MAG}Setting up adminer (bonus) config...${RES}"
+	if nc -zv adminer 8080 >/dev/null 2>&1; then
+		cp /temp/bonus.conf /etc/nginx/http.d/bonus.conf
+		echo -e "${GRE}Setting up adminer (bonus) config...Done!${RES}"
+	else
+		echo -e "${YEL}No bonus${RES}"
+	fi
+}
+
 create_dirs
 generate_ss_ssl
 set_permissions
 setup_nginx_config
+check_bonus_setup
 
 echo -e "${GRE}nginx setup complete!${RES}"
 

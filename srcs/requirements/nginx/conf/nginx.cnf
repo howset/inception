@@ -4,7 +4,7 @@ server {
 	listen	[::]:443 ssl;
 
 	#which domain to respond
-	server_name ${DOMAIN_NAME} localhost;
+	server_name ${DOMAIN_NAME};
 
 	#SSL certs-key & TLS
 	ssl_certificate_key			/etc/nginx/ssl/server.key;
@@ -34,18 +34,25 @@ server {
 		include			fastcgi_params;
 		fastcgi_param	SCRIPT_FILENAME $document_root$fastcgi_script_name;
 	}
-
-	#adminer proxy (bonus)
-	location /adminer/ {
-		proxy_pass http://adminer:8080/;
-		proxy_set_header Host $host;
-		proxy_set_header X-Real-IP $remote_addr;
-		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-		proxy_set_header X-Forwarded-Proto $scheme;
-	}
 }
 
-#redirect http to https (because alpine opens 80 as default in /etc/nginx/http.d/default.conf)
+#redirect https://localhost to https://${DOMAIN_NAME}
+server {
+	listen	443 ssl;
+	listen	[::]:443 ssl;
+
+	#which domain to respond
+	server_name localhost;
+
+	ssl_certificate_key			/etc/nginx/ssl/server.key;
+	ssl_certificate				/etc/nginx/ssl/server.crt;
+	ssl_protocols				TLSv1.3;
+
+	# Redirect all requests to domain
+	return 301 https://${DOMAIN_NAME}$request_uri;
+}
+
+#redirect http://localhost to https://${DOMAIN_NAME} (because alpine opens 80 as default in /etc/nginx/http.d/default.conf)
 server {
 	listen 80;
 	listen [::]:80;

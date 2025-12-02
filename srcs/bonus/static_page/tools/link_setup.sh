@@ -11,8 +11,10 @@ RES='\033[0m'
 #exit immediately if any command fails, prevents the container from silently continuing if something breaks
 set -e
 
+#all this is called by the makefile
 echo -e "${CYA}Running link_setup.sh${RES}"
 
+#creating link for a block theme in wp
 creating_link()
 {
 	echo -e "${MAG}Creating link...${RES}"
@@ -20,7 +22,7 @@ creating_link()
 		--post_type=wp_navigation \
 		--post_status=publish \
 		--post_title="Main Navigation" \
-		--post_content='<!-- wp:navigation-link {"label":"Mock Résumé","url":"https://localhost/jumper/"} /-->' \
+		--post_content='<!-- wp:navigation-link {"label":"Mock Résumé","url":"https://hsetyamu.42.fr/jumper/"} /-->' \
 		--allow-root --path=/var/www/html
 	echo -e "${GRE}Creating link...Done!${RES}"
 }

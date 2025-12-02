@@ -15,7 +15,11 @@ RUN chmod +x /usr/local/bin/nginx_init.sh
 #nginx config, NOT overwrite
 COPY ./conf/nginx.cnf /etc/nginx/http.d/secure.conf
 
+#bonus for adminer
+COPY ./conf/adminer_bonus.cnf /temp/bonus.conf
+
 #expose port (none here, public exposure in docker-compose)
+#EXPOSE 80 443
 
 #use the init script as entrypoint
 ENTRYPOINT ["/usr/local/bin/nginx_init.sh"]

@@ -10,11 +10,15 @@ RUN apk update && apk add --no-cache\
 	php83-pdo_mysql \
 	php83-mbstring \
 	php83-json
-	# && ln -s /usr/bin/php83 /usr/bin/php
 
+#get adminer
 RUN wget -O /usr/share/adminer.php \
 	"https://github.com/vrana/adminer/releases/download/v5.4.1/adminer-5.4.1.php" \
 	&& chmod u=rw,g=r,o=r /usr/share/adminer.php
+
+#init script
+COPY tools/adminer_init.sh /usr/local/bin/adminer_init.sh
+RUN chmod +x /usr/local/bin/adminer_init.sh
 
 WORKDIR /usr/share
 
@@ -22,6 +26,5 @@ WORKDIR /usr/share
 #EXPOSE 8080
 
 #use the init script as entrypoint
-#ENTRYPOINT ["/usr/local/bin/mdb_init.sh"]
-CMD ["php", "-S", "0.0.0.0:8080", "-t", "/usr/share", "adminer.php"]
-# -S specify addr:port, -t specify document root
+ENTRYPOINT ["/usr/local/bin/adminer_init.sh"]
+#CMD ["php", "-S", "0.0.0.0:8080", "-t", "/usr/share", "adminer.php"]

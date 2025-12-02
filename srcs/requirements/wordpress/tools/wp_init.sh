@@ -91,7 +91,7 @@ wp_create_user()
 			--allow-root
 		echo -e "${GRE}Creating user...Done!${RES}"
 	else
-		echo -e "${YEL}Creating user fails!${RES}"
+		echo -e "${YEL}Creating user fails (already exists)!${RES}"
 	fi
 }
 
@@ -106,8 +106,9 @@ wp_configure_comments()
 set_permissions()
 {
 	echo -e "${MAG}Setting permissions${RES}"
-	chown -R nobody:nogroup /var/www/html
-	chmod -R u=rwx,go=rx /var/www/html
+	#chown -R nobody:nogroup /var/www/html #user with least permission, std in alpine
+	chown -R nobody:www-data /var/www/html #std group name used by web servers 
+	chmod -R ug=rwx,o=rx /var/www/html
 	echo -e "${GRE}Setting permissions...Done!${RES}"
 }
 
