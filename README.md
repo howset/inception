@@ -1188,6 +1188,7 @@ exit
 - make aware:
 	- homepage has no links to static page __BEFORE__ bonus
 	- wp-admin plugins has no redis __BEFORE__ bonus
+	- empty location (desktop?) before downloading something via ftp
 
 ## Terminology overload
 🐳 Docker & Containers
