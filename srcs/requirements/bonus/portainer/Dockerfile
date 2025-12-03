@@ -21,11 +21,7 @@ RUN mkdir -p /data
 COPY tools/portainer_init.sh /usr/local/bin/portainer_init.sh
 RUN chmod +x /usr/local/bin/portainer_init.sh
 
-# Expose Portainer ports
-EXPOSE 9000 9443 8000
-
-# Health check
-# HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-#     CMD wget --no-verbose --tries=1 --spider http://localhost:9000/api/status || exit 1
+#expose port
+#EXPOSE 9000 9443 8000
 
 ENTRYPOINT ["/usr/local/bin/portainer_init.sh"]

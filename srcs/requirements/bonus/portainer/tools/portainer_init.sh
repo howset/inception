@@ -17,7 +17,7 @@ setup_portainer()
 	echo -e "${MAG}Setting up Portainer...${RES}"
 	mkdir -p /data
 	chmod u=rwx,go= /data
-	echo -e "${GRE}Portainer setup complete!${RES}"
+	echo -e "${GRE}Setting up Portainer...Done!${RES}"
 }
 
 #start portainer with:
