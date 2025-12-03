@@ -571,8 +571,9 @@ RUN chmod +x /usr/local/bin/nginx_init.sh
 #nginx config, NOT overwrite
 COPY ./conf/nginx.cnf /etc/nginx/http.d/secure.conf
 
-#bonus for adminer
-COPY ./conf/adminer_bonus.cnf /temp/bonus.conf
+#bonus for adminer & portainer
+COPY ./conf/adminer_bonus.cnf /temp/adminer_bonus.conf
+COPY ./conf/portainer_bonus.cnf /temp/portainer_bonus.conf
 
 #expose port (none here, public exposure in docker-compose)
 #EXPOSE 80 443
@@ -667,13 +668,16 @@ setup_nginx_config()
 
 check_bonus_setup()
 {
-	echo -e "${MAG}Setting up adminer (bonus) config...${RES}"
 	if nc -zv adminer 8080 >/dev/null 2>&1; then
+		echo -e "${MAG}Setting up adminer (bonus) config...${RES}"
 		mkdir -p /etc/nginx/bonus.d
-		cp /temp/bonus.conf /etc/nginx/bonus.d/bonus.conf
+		cp /temp/adminer_bonus.conf /etc/nginx/bonus.d/adminer_bonus.conf
 		echo -e "${GRE}Setting up adminer (bonus) config...Done!${RES}"
-	else
-		echo -e "${YEL}No bonus${RES}"
+	fi
+	if nc -zv portainer 9443 >/dev/null 2>&1; then
+		echo -e "${MAG}Setting up portainer (bonus) config...${RES}"
+		cp /temp/portainer_bonus.conf /etc/nginx/bonus.d/portainer_bonus.conf
+		echo -e "${GRE}Setting up portainer (bonus) config...Done!${RES}"
 	fi
 }
 
@@ -783,6 +787,30 @@ location /adminer/ {
 	proxy_set_header X-Real-IP $remote_addr;
 	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 	proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+</details>
+
+<details>
+<summary>🗟configs (portainer)</summary>
+
+```
+location /portainer/ {
+	proxy_pass http://portainer:9000/;
+	proxy_http_version 1.1;
+
+	# WebSocket support
+	proxy_set_header Upgrade $http_upgrade;
+	proxy_set_header Connection "upgrade";
+
+	# Basic headers
+	proxy_set_header Host $http_host;
+	proxy_set_header X-Real-IP $remote_addr;
+	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	proxy_set_header X-Forwarded-Proto https;
+
+	# Disable buffering
+	proxy_buffering off;
 }
 ```
 </details>
@@ -1728,6 +1756,105 @@ lftp> put /local/file.txt
 ```
 - or just use filezilla
 
+### Portainer
+- Yes, it's Portainer. Monica is not available in alpine, Opentdd has problems with vnc, gramps web is too complicated to set up, hugo just cant work. Phew, so here it is, Portainer.
+
+#### Dockerfile
+<details>
+<summary>🗟Dockerfile (portainer)</summary>
+
+```docker
+# Base image
+FROM alpine:3.21.1
+#FROM public.ecr.aws/docker/library/alpine:3.21.1
+
+#install packages/dependencies
+RUN apk add --no-cache \
+	curl \
+	ca-certificates
+
+#get portainer
+RUN curl -L https://github.com/portainer/portainer/releases/download/2.33.5/portainer-2.33.5-linux-amd64.tar.gz \
+	-o /usr/local/bin/portainer.tar.gz && \
+	tar -xzf /usr/local/bin/portainer.tar.gz -C /usr/local/bin/ && \
+	rm -rf /usr/local/bin/portainer.tar.gz && \
+	chmod +x /usr/local/bin/portainer/portainer
+
+#create data directory
+RUN mkdir -p /data
+
+#init script
+COPY tools/portainer_init.sh /usr/local/bin/portainer_init.sh
+RUN chmod +x /usr/local/bin/portainer_init.sh
+
+#expose port
+#EXPOSE 9000 9443 8000
+
+ENTRYPOINT ["/usr/local/bin/portainer_init.sh"]
+```
+</details>
+
+#### Script
+<details>
+<summary>🗟init script (portainer)</summary>
+
+```sh
+#!/bin/sh
+
+RED='\033[0;31m'
+GRE='\033[0;32m'
+YEL='\033[1;33m'
+BLU='\033[0;34m'
+MAG='\033[0;35m'
+CYA='\033[0;36m'
+RES='\033[0m'
+
+set -e
+
+echo -e "${CYA}Running portainer_init.sh${RES}"
+
+setup_portainer()
+{
+	echo -e "${MAG}Setting up Portainer...${RES}"
+	mkdir -p /data
+	chmod u=rwx,go= /data
+	echo -e "${GRE}Setting up Portainer...Done!${RES}"
+}
+
+#start portainer with:
+# - http on port 9000
+# - https on port 9443 (optional)
+# - edge agent on port 8000 (optional)
+# - data stored in /data
+# - no analytics
+# - hide labels
+start_portainer()
+{
+	echo -e "${MAG}Starting Portainer...${RES}"
+	exec /usr/local/bin/portainer/portainer \
+		--data /data \
+		--bind :9000 \
+		--bind-https :9443 \
+		--no-analytics \
+		--hide-label owner=inception
+}
+
+setup_portainer
+start_portainer
+```
+</details>
+
+#### Confs
+<details>
+<summary>🗟Config (portainer)</summary>
+</details>
+
+#### Using portainer
+- open in `https://localhost:9443` or via nginx `https://localhost/portainer`
+- default credentials because it has no persistence (no volume)
+	- user: admin
+	- password: YourSecurepassword123!
+- then go to get started
 
 ## Evals
 - make aware:
