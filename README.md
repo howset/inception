@@ -62,9 +62,10 @@ Reqs:
 	```
 	memory 4096MB --> 2048 actually suffices
 	HD 20GB
-	processors 4 --> 1 is enough
+	processors 4 --> 1 or 2 is enough
 	```
-	Actually allocating too much would just make the startup slower, alpine linux is crazy small. The large allocation just make more initialization overhead.
+	- Allocating too much resources would just make the startup slower, alpine linux is crazy small. The large allocation just make more initialization overhead.
+	- On the other hand, with minimal resources, using GUI on Alpine may put too much pressure and makes it hangs (though SSH from host machine works just fine). For example opening only 2 instances of firefox and geany often meets this problem. Speculation: firefox doesnt work well with musl based alpine.
 - Go to settings, storage
 - Put the iso in the optical drive (choose other linux 64).
 
@@ -282,6 +283,11 @@ Reqs:
 
 #### To open the page
 - dont forget to open /etc/hosts and add [username].42.fr to open the page using a browser in the docker host (VM).
+
+### Useful checks
+- `sudo ncdu /` use sudo to also check dirs that would otherwise be hidden.
+- `free -h` check free memory
+- `ps aux` check PID
 
 ## Docker containers
 - The base image can basically be from anything, either from debian:bookworm or alpine:3.21.1 as long as the kernel is the same (linux), the difference is the size of the image using alpine ended up smaller than debian (~200 MB vs ~500 MB), and some adjustments also has to be made due to some differences between the systems (e.g. alpine has no bash by default).
@@ -528,14 +534,21 @@ docker exec mdb_cont mysql -e "SHOW VARIABLES LIKE 'port';"
 
 ### Nginx
 - Follows basically similar idea with mdb.
-- the security cert is generated at runtime which are advantegeous in respect:
+- The security cert is generated at runtime which are advantegeous in respect:
 	- no key stored in the git repo
 	- each environment gets a unique key (cluster comp, laptop, vm)
 	- destroyed with docker-compose down -v, regenerated fresh
 - but of course unstable (changes all the time) and not reflective of real situation (that uses CA - Certificate Authority)
 
 #### Dockerfile
--- Similar with mdb --
+- Follows the same idea overall:
+	- from a base image,
+	- install necessary packages,
+	- then deal with setting up the init script,
+	- the configs too,
+	- then entrypoint
+- Since there is a bonus, an additional config file has to be copied too, but separately (to a temp directory)
+
 <details>
 <summary>🗟Dockerfile (nginx)</summary>
 
@@ -545,7 +558,7 @@ FROM alpine:3.21.1
 #FROM public.ecr.aws/docker/library/alpine:3.21.1
 
 #install nginx
-RUN apk update && apk add \
+RUN apk update && apk add --no-cache\
 	nginx \
 	openssl \
 	nano curl
@@ -555,18 +568,25 @@ COPY ./tools/nginx_init.sh /usr/local/bin/nginx_init.sh
 RUN chmod +x /usr/local/bin/nginx_init.sh
 
 #nginx config, NOT overwrite
-COPY ./conf/nginx.cnf /etc/nginx/http.d/secure.conf.template
+COPY ./conf/nginx.cnf /etc/nginx/http.d/secure.conf
+
+#bonus for adminer
+COPY ./conf/adminer_bonus.cnf /temp/bonus.conf
 
 #expose port (none here, public exposure in docker-compose)
+#EXPOSE 80 443
 
 #use the init script as entrypoint
 ENTRYPOINT ["/usr/local/bin/nginx_init.sh"]
 # CMD [ "nginx", "-g", "daemon off;" ]
+
 ```
 </details>
 
 #### Entrypoint script
-Sets up SSL?
+- The accompanying bonus conf (adminer_bonus.cnf) is first copied by the dockerfile to a temp dir. If adminer is detected to be up and running, then this bonus conf file can be copied to nginx conf file location.
+- Of course nginx has to be recreated, this is handled by the makefile.
+
 <details>
 <summary>🗟init script (nginx)</summary>
 
@@ -615,7 +635,8 @@ generate_ss_ssl()
 			-out /etc/nginx/ssl/server.crt \
 			-days 365 \
 			-nodes \
-			-subj "/C=DE/ST=Berlin/L=Berlin/O=42/CN=${DOMAIN_NAME}"
+			-subj "/C=DE/ST=Berlin/L=Berlin/O=42/CN=${DOMAIN_NAME}" \
+			-addext "subjectAltName=DNS:${DOMAIN_NAME},DNS:localhost"
 		echo -e "${GRE}Generating self-signed certs...Done!${RES}"
 	else
 		echo -e "${YEL}Found existing certs!${RES}"
@@ -643,10 +664,23 @@ setup_nginx_config()
 	echo -e "${GRE}Nginx config (domain name)...Done!${RES}"
 }
 
+check_bonus_setup()
+{
+	echo -e "${MAG}Setting up adminer (bonus) config...${RES}"
+	if nc -zv adminer 8080 >/dev/null 2>&1; then
+		mkdir -p /etc/nginx/bonus.d
+		cp /temp/bonus.conf /etc/nginx/bonus.d/bonus.conf
+		echo -e "${GRE}Setting up adminer (bonus) config...Done!${RES}"
+	else
+		echo -e "${YEL}No bonus${RES}"
+	fi
+}
+
 create_dirs
 generate_ss_ssl
 set_permissions
 setup_nginx_config
+check_bonus_setup
 
 echo -e "${GRE}nginx setup complete!${RES}"
 
@@ -659,6 +693,7 @@ exec nginx -g "daemon off;"
 #### Configs[^16]
 - The default config file[^13][^14].
 - The config file `nginx.cnf` is __not__ copied to the docker container (overwrite) in `/etc/nginx/nginx.conf` because that is the parent one, and in the last line _virtual hosts configs includes_ points to `/etc/nginx/http.d/*.conf`.
+- The adminer config file is put in a different directory that will be inspected by the include line in the secure.conf (nginx conf file).
 
 <details>
 <summary>🗟configs (nginx)</summary>
@@ -670,7 +705,7 @@ server {
 	listen	[::]:443 ssl;
 
 	#which domain to respond
-	server_name ${DOMAIN_NAME} localhost;
+	server_name ${DOMAIN_NAME};
 
 	#SSL certs-key & TLS
 	ssl_certificate_key			/etc/nginx/ssl/server.key;
@@ -683,10 +718,15 @@ server {
 	root	/var/www/html;
 	index	index.html index.php;
 
-	#match every possible request (/) & check if file exists, if not then index at a directory, if still not found then 404
+	#try to serve exact file, if not found try as directory, if still not found then 404
 	location / {
-		try_files	$uri $uri/ =404;
+		try_files $uri $uri/ =404;
 	}
+
+	#try to serve exact file, if not found try as directory, if still not found fallback to /index.php?$args
+#	location / {
+#		try_files	$uri $uri/ /index.php?$args;
+#	}
 
 	# Directive for every request that finishes with .php
 	location ~ \.php$ {
@@ -700,14 +740,48 @@ server {
 		include			fastcgi_params;
 		fastcgi_param	SCRIPT_FILENAME $document_root$fastcgi_script_name;
 	}
+
+	# Include bonus service locations if they exist
+	include /etc/nginx/bonus.d/*.conf;
 }
 
-#redirect http to https (because alpine opens 80 as default in /etc/nginx/http.d/default.conf)
+#redirect https://localhost to https://${DOMAIN_NAME}
+server {
+	listen	443 ssl;
+	listen	[::]:443 ssl;
+
+	#which domain to respond
+	server_name localhost;
+
+	ssl_certificate_key			/etc/nginx/ssl/server.key;
+	ssl_certificate				/etc/nginx/ssl/server.crt;
+	ssl_protocols				TLSv1.3;
+
+	# Redirect all requests to domain
+	return 301 https://server_name$request_uri;
+}
+
+#redirect http://localhost to https://${DOMAIN_NAME} (because alpine opens 80 as default in /etc/nginx/http.d/default.conf)
 server {
 	listen 80;
 	listen [::]:80;
 	server_name ${DOMAIN_NAME} localhost;
 	return 301 https://$server_name$request_uri;
+}
+
+```
+</details>
+
+<details>
+<summary>🗟configs (adminer)</summary>
+
+```
+location /adminer/ {
+	proxy_pass http://adminer:8080/;
+	proxy_set_header Host $host;
+	proxy_set_header X-Real-IP $remote_addr;
+	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	proxy_set_header X-Forwarded-Proto $scheme;
 }
 ```
 </details>
@@ -777,12 +851,13 @@ ENTRYPOINT ["/usr/local/bin/wp_init.sh"]
 </details>
 
 #### Entrypoint script
-- the idea here is to wait for mdb to finish setting up, so the set -e (shell error is encountered) comes handy here so that if mdb container has not finished setting up, then connection can not be established (yet), the script will exit, then docker compose will restart it. Again and again until mdb container is finished, and connection can be established.
+- The idea here is to wait for mdb to finish setting up, so the set -e (shell error is encountered) comes handy here so that if mdb container has not finished setting up, then connection can not be established (yet), the script will exit, then docker compose will restart it. Again and again until mdb container is finished, and connection can be established. --> Not anymore, use healthcheck and dependencies in the docker-compose.
 - wp is installed in 4 steps (via wp-cli)[^18]:
 	1. `wp core download` somehow i need to change memory_limit first, otherwise cant download.
 	2. `wp config create` generate config file (`/var/www/html/wp-config.php`).
 	3. `wp db create` create db -- skipped because db is handled by mdb_container.
 	4. `wp core install` install wp.
+- Additionally, a function to check if the bonus redis plugin should be connected and enabled --> works more or less like adminer and nginx.
 
 <details>
 <summary>🗟init script (wp)</summary>
@@ -811,7 +886,7 @@ change_limit()
 	echo -e "${MAG}Changing memory limit...Done!${RES}"
 }
 
-##substitute environment variables into php-fpm config (to change ports)
+#substitute environment variables into php-fpm config (to change ports)
 setup_php_config()
 {
 	echo -e "${MAG}Setting php-fpm config (port)...${RES}"
@@ -852,7 +927,7 @@ wp_config_create()
 #install wp
 wp_core_install()
 {
-	local WP_MAD_PW=$(cat /run/secrets/wp_adm_pw)
+	local WP_MAD_PW=$(cat /run/secrets/wp_mad_pw)
 	if ! wp core is-installed --allow-root --path=/var/www/html 2>/dev/null; then
 		echo -e "${MAG}Installing WordPress...${RES}"
 		wp core install --allow-root \
@@ -881,17 +956,14 @@ wp_create_user()
 			--allow-root
 		echo -e "${GRE}Creating user...Done!${RES}"
 	else
-		echo -e "${YEL}Creating user fails!${RES}"
+		echo -e "${YEL}Creating user fails (already exists)!${RES}"
 	fi
 }
 
 wp_configure_comments()
 {
 	echo -e "${MAG}Configure comment settings...${RES}"
-	#allow comments without approval
-	wp option update comment_moderation 0 --allow-root --path=/var/www/html
-	#enable comments by default on new posts
-	wp option update default_comment_status 'open' --allow-root --path=/var/www/html
+	wp option update comment_whitelist 0 --allow-root --path=/var/www/html
 	echo -e "${GRE}Configure comment settings...Done!!${RES}"
 }
 
@@ -899,9 +971,23 @@ wp_configure_comments()
 set_permissions()
 {
 	echo -e "${MAG}Setting permissions${RES}"
-	chown -R nobody:nogroup /var/www/html
-	chmod -R u=rwx,go=rx /var/www/html
+	#chown -R nobody:nogroup /var/www/html #user with least permission, std in alpine
+	chown -R nobody:www-data /var/www/html #std group name used by web servers 
+	chmod -R ug=rwx,o=rx /var/www/html
 	echo -e "${GRE}Setting permissions...Done!${RES}"
+}
+
+#if redis_cont is up, then install plugin in the wp_cont side, set it up, and enable it. (bonus)
+connect_redis()
+{
+	if nc -zv redis 6379 >/dev/null 2>&1; then
+		echo -e "${MAG}Connecting redis...${RES}"
+		wp plugin install redis-cache --activate --allow-root --path=/var/www/html
+		wp config set WP_REDIS_HOST redis --allow-root --path=/var/www/html
+		wp config set WP_REDIS_PORT 6379 --raw --allow-root --path=/var/www/html
+		wp redis enable --allow-root --path=/var/www/html
+		echo -e "${GRE}Connecting redis...Done!${RES}"
+	fi
 }
 
 change_limit
@@ -912,6 +998,7 @@ wp_core_install
 wp_create_user
 wp_configure_comments
 set_permissions
+connect_redis
 
 echo -e "${GRE}WordPress setup complete!${RES}"
 
@@ -961,6 +1048,7 @@ php_value[memory_limit] = 512M
 </details>
 
 #### Exploring wp
+- check through the browser i guess?
 
 ### Docker Compose
 <details>
@@ -982,14 +1070,15 @@ services:
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
     networks:
-      - inception
+      - inc_net
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
-      interval: 20s
+      # test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "netstat -tuln | grep :${DB_PORT}"]
+      interval: 10s
       timeout: 5s
       retries: 3
-    secrets:nobody:nogroup
+    secrets:
       - db_user_pw
 
   wordpress:
@@ -1001,32 +1090,32 @@ services:
     volumes:
       - wp_data:/var/www/html
     environment:
+      DOMAIN_NAME: ${DOMAIN_NAME}
       DB_NAME: ${DB_NAME}
       DB_USER_NAME: ${DB_USER_NAME}
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
       WP_TITLE: ${WP_TITLE}
-      WP_ADM_USER: ${WP_ADM_USER}
-      WP_ADM_EMAIL: ${WP_ADM_EMAIL}
+      WP_MAD_USER: ${WP_MAD_USER}
+      WP_MAD_EMAIL: ${WP_MAD_EMAIL}
       WP_PORT: ${WP_PORT}
       WP_USER: ${WP_USER}
       WP_USER_EMAIL: ${WP_USER_EMAIL}
     networks:
-      - inception
+      - inc_net
     depends_on:
       mariadb:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      #test: ["CMD-SHELL", "netstat -tnlp | grep :${WP_PORT} || exit 1"]
-      #test: ["CMD-SHELL", "test -S /run/php-fpm.sock || exit 1"]
-      test: ["CMD-SHELL", "wp core is-installed --allow-root --path=/var/www/html > /dev/null 2>&1 || exit 1"]
-      interval: 20s
-      timeout: 5s
+      test: ["CMD-SHELL", "netstat -tnlp | grep :${WP_PORT}"]
+      #test: ["CMD-SHELL", "wp core is-installed --allow-root --path=/var/www/html > /dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 2s
       retries: 3
     secrets:
       - db_user_pw
-      - wp_adm_pw
+      - wp_mad_pw
       - wp_user_pw
 
   nginx:
@@ -1038,9 +1127,10 @@ services:
     volumes:
       - wp_data:/var/www/html
     environment:
+      DOMAIN_NAME: ${DOMAIN_NAME}
       WP_PORT: ${WP_PORT}
     networks:
-      - inception
+      - inc_net
     depends_on:
       wordpress:
         condition: service_healthy
@@ -1051,28 +1141,119 @@ services:
       - "80:80"
       - "443:443"
     healthcheck:
-      test: ["CMD", "curl", "-kfI", "https://localhost:443"]
-      interval: 20s
+      # test: ["CMD", "curl", "-kfI", "https://localhost:443"]
+      test: ["CMD-SHELL", "netstat -tuln | grep :443"]
+      interval: 3s
+      timeout: 2s
+      retries: 3
+
+  staticpage:
+    profiles: ["bonus"]
+    image: staticpage:inc42
+    build:
+      context: requirements/bonus/static_page
+      dockerfile: Dockerfile
+    container_name: staticp_cont
+    volumes:
+      - wp_data:/var/www/html
+    networks:
+      - inc_net
+    restart: "no"
+
+  redis:
+    profiles: ["bonus"]
+    image: redis:inc42
+    build:
+      context: requirements/bonus/redis
+      dockerfile: Dockerfile
+    container_name: redis_cont
+    volumes:
+    - redis_data:/data
+    networks:
+      - inc_net
+    depends_on:
+      wordpress:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      # test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "netstat -tuln | grep :6379"]
+      interval: 5s
+      timeout: 2s
+      retries: 3
+
+  adminer:
+    profiles: ["bonus"]
+    image: adminer:inc42
+    build:
+      context: requirements/bonus/adminer
+      dockerfile: Dockerfile
+    container_name: adminer_cont
+    networks:
+      - inc_net
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -tuln | grep :8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  vsftpd:
+    profiles: ["bonus"]
+    image: vsftpd:inc42
+    build:
+      context: requirements/bonus/vsftpd
+      dockerfile: Dockerfile
+    container_name: vsftpd_cont
+    ports:
+      - "21:21"
+      - "21000-21010:21000-21010"
+    volumes:
+      - wp_data:/home/${FTP_USER}/wordpress
+    networks:
+      - inc_net
+    environment:
+      FTP_USER: ${FTP_USER}
+    secrets:
+      - ftp_pw
+    restart: unless-stopped
+    depends_on:
+      wordpress:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -tuln | grep :21"]
+      interval: 10s
       timeout: 5s
       retries: 3
 
 volumes:
   mdb_data:
+    name: mdb_vol
     driver: local
   wp_data:
+    name: wp_vol
+    driver: local
+  redis_data:
+    name: redis_vol
     driver: local
 
 networks:
-  inception:
+  inc_net:
+    name: inc_net
     driver: bridge
 
 secrets:
   db_user_pw:
-    file: ../secrets/db_user_pw
-  wp_adm_pw:
-    file: ../secrets/wp_adm_pw
+    file: ${DB_USER_PW}
+  wp_mad_pw:
+    file: ${WP_MAD_PW}
   wp_user_pw:
-    file: ../secrets/wp_user_pw
+    file: ${WP_USER_PW}
+  ftp_pw:
+    file: ${FTP_PW}
 ```
 </details>
 
@@ -1123,72 +1304,435 @@ curl -v http://localhost:80 #just check the result of a connection
 ```
 
 ## Bonus
+- The location is very weird --> srcs/requirements/bonus/. I would intuitively think if there is a requirement directory, then a bous directory would be on the same level (so srcs/bonus/), not under it.
+
 ### Static page
 - Made a mock cv page by pirating a freely available template from the interwebs.
 - Copy it to `wp_vol` and make a directory there.
-- Add a link to the wp homepage to the new static page.
+- Add a link to the wp homepage to the new static page (redirects to the domain hsetyamu.42.fr).
+
+#### Dockerfile
+- Basically nothing has to be run, so the dockerfile (and the init script) just shares some responsibility to copy the static page files to a certain location in the wp_volume.
+
+<details>
+<summary>🗟Dockerfile (static page)</summary>
+
+```docker
+# Base image
+FROM alpine:3.21.1
+#FROM public.ecr.aws/docker/library/alpine:3.21.1
+
+#install nothing
+
+#init script
+COPY ./tools/staticp_init.sh /usr/local/bin/staticp_init.sh
+RUN chmod +x /usr/local/bin/staticp_init.sh
+
+#the static page
+COPY ./contents/ /tmp/jumper/
+
+ENTRYPOINT ["/usr/local/bin/staticp_init.sh"]
+```
+</details>
+
+#### Script
+- The init script for the static page does nothing more than just copying files.
+
+<details>
+<summary>🗟init script (static page)</summary>
+
+```sh
+#!/bin/sh
+
+RED='\033[0;31m'
+GRE='\033[0;32m'
+YEL='\033[1;33m'
+BLU='\033[0;34m'
+MAG='\033[0;35m'
+CYA='\033[0;36m'
+RES='\033[0m'
+
+#exit immediately if any command fails, prevents the container from silently continuing if something breaks
+set -e
+
+echo -e "${CYA}Running staticp_init.sh${RES}"
+
+#not sure if 5s is enough for all conts to be healthy if no helathchecks are performed
+hoping_all_healthy()
+{
+	echo -e "${MAG}Hoping all containers are healthy (actually just sleeping here)${RES}"
+	sleep 5s
+}
+
+#copy the prepared static page to the volume
+copying_static()
+{
+	echo -e "${MAG}Deploying static page...${RES}"
+	mkdir -p /var/www/html/jumper
+	cp -r /tmp/jumper/. /var/www/html/jumper/
+	echo -e "${GRE}Deploying static page...Done!${RES}"
+}
+
+hoping_all_healthy
+copying_static
+
+echo -e "${GRE}Static page copied.${RES}"
+```
+</details>
+
+- The default wordpress theme is a block theme, so the following script is to create a link on the homepage to the newly created static page.
+- This script is called by the makefile. Obviously the functionality can be delegated to wp_init.sh script, but i bumped with synchronization time between (re)mounting the wp_volume and checking the existence of the static page directory. So i leave it like this for now.
+<details>
+<summary>🗟creating link (static page)</summary>
+
+```sh
+#!/bin/sh
+
+RED='\033[0;31m'
+GRE='\033[0;32m'
+YEL='\033[1;33m'
+BLU='\033[0;34m'
+MAG='\033[0;35m'
+CYA='\033[0;36m'
+RES='\033[0m'
+
+#exit immediately if any command fails, prevents the container from silently continuing if something breaks
+set -e
+
+#all this is called by the makefile
+echo -e "${CYA}Running link_setup.sh${RES}"
+
+#creating link for a block theme in wp
+creating_link()
+{
+	echo -e "${MAG}Creating link...${RES}"
+	docker exec wp_cont wp post create \
+		--post_type=wp_navigation \
+		--post_status=publish \
+		--post_title="Main Navigation" \
+		--post_content='<!-- wp:navigation-link {"label":"Mock Résumé","url":"https://hsetyamu.42.fr/jumper/"} /-->' \
+		--allow-root --path=/var/www/html
+	echo -e "${GRE}Creating link...Done!${RES}"
+}
+
+creating_link
+
+echo -e "${GRE}New link is set up.${RES}"
+```
+</details>
+
+#### Confs
+- no confs here
+
+#### Using static page
+- Just click on the link in the homepage or go to `https://localhost/jumper`
 
 ### Redis cache
 - redis is a caching server plugin for wordpress that is setup in its own container but the connection has to be established from the worpress side. 
 - has a volume
+- has to be connected to wordpress --> separately under bonus (`connect_redis()` in wp_init.sh)
+
+#### Dockerfile
+<details>
+<summary>🗟Dockerfile (redis)</summary>
+
+```docker
+# Base image
+FROM alpine:3.21.1
+#FROM public.ecr.aws/docker/library/alpine:3.21.1
+
+#install redis
+RUN apk update && apk add --no-cache\
+	redis
+
+#init script
+COPY tools/redis_init.sh /usr/local/bin/redis_init.sh
+RUN chmod +x /usr/local/bin/redis_init.sh
+
+#create dir for redis data
+RUN mkdir -p /data && chown redis:redis /data
+
+#expose port (purely metadata)
+#EXPOSE 6379
+
+#use the init script as entrypoint
+ENTRYPOINT ["/usr/local/bin/redis_init.sh"]
+#CMD [ "redis-server", "--bind", "0.0.0.0", "--protected-mode", "no", "--dir", "/data" ]
+
+```
+</details>
+
+#### Script
+- the script is just to run the PID1.
+
+<details>
+<summary>🗟init script (redis)</summary>
+
+```sh
+#!/bin/sh
+set -e
+
+RED='\033[0;31m'
+GRE='\033[0;32m'
+MAG='\033[0;35m'
+CYA='\033[0;36m'
+RES='\033[0m'
+
+echo -e "${CYA}Running redis_init.sh${RES}"
+echo -e "${GRE}Redis setup complete!${RES}"
+
+# Start redis
+exec redis-server --bind 0.0.0.0 --protected-mode no --dir /data
+#protected mode is no bcause redis is isolated on inception_net,
+# not exposed to host, so authentication is not required
+
+# exec "$@"
+```
+</details>
+
+#### Confs
+- no confs here
+
+#### Using Redis
+- Go to `https://localhost/wp-admin` and login.
+- Go to the tab `plugins`, see that redis is enabled.
 
 ### Adminer
-- just one file.
-- access and display the database (use the credentials in .env and secrets. server is mariadb).
-- add a location in nginx config to accomodate this.
+- Just one php file that is downloaded by wget. Additional installation of some php packages may or may not be necessary.
+- Access and display the database (use the credentials in .env and secrets. server is mariadb).
+- Add a location in nginx config to accomodate this --> this has to be loaded separately (see nginx)
+
+#### Dockerfile
+<details>
+<summary>🗟Dockerfile (adminer)</summary>
+
+```docker
+# Base image
+FROM alpine:3.21.1
+#FROM public.ecr.aws/docker/library/alpine:3.21.1
+
+#install dependencies
+RUN apk update && apk add --no-cache\
+	php83 \
+	php83-session \
+	php83-mysqli \
+	php83-pdo_mysql \
+	php83-mbstring \
+	php83-json
+
+#get adminer
+RUN wget -O /usr/share/adminer.php \
+	"https://github.com/vrana/adminer/releases/download/v5.4.1/adminer-5.4.1.php" \
+	&& chmod u=rw,g=r,o=r /usr/share/adminer.php
+
+#init script
+COPY tools/adminer_init.sh /usr/local/bin/adminer_init.sh
+RUN chmod +x /usr/local/bin/adminer_init.sh
+
+WORKDIR /usr/share
+
+#expose port (purely metadata)
+#EXPOSE 8080
+
+#use the init script as entrypoint
+#ENTRYPOINT ["/usr/local/bin/adminer_init.sh"]
+CMD ["php", "-S", "0.0.0.0:8080", "-t", "/usr/share", "adminer.php"]
+```
+</details>
+
+#### Script
+- the script is just to run the PID1.
+
+<details>
+<summary>🗟init script (adminer)</summary>
+
+```sh
+#!/bin/sh
+set -e
+
+RED='\033[0;31m'
+GRE='\033[0;32m'
+MAG='\033[0;35m'
+CYA='\033[0;36m'
+RES='\033[0m'
+
+echo -e "${CYA}Running adminer_init.sh${RES}"
+echo -e "${GRE}Adminer setup complete!${RES}"
+
+# Start adminer
+exec php -S 0.0.0.0:8080 -t /usr/share adminer.php
+# -S specify addr:port, -t specify document root
+
+# exec "$@"
+```
+</details>
+
+#### Confs
+- no confs here (its in nginx)
+
+#### Using Adminer
+- Go to `https://localhost/adminer`
+- Use credentials for mdb in .env and secrets, network is `mariadb`
 
 ### FTP server
+- Insecure because not through tls --> needs certs, but this one is generated via nginx.
+- Credentials in .env and secrets.
+- Port exposure through docker-compose
+- Directory permission & ownership is a headache!!
+
+#### Dockerfile
+<details>
+<summary>🗟Dockerfile (vsftpd)</summary>
+
+```docker
+# Base image
+FROM alpine:3.21.1
+#FROM public.ecr.aws/docker/library/alpine:3.21.1
+
+#install vsftpd
+RUN apk add --no-cache \
+	vsftpd \
+	openssl
+
+#init script
+COPY tools/vsftpd_init.sh /usr/local/bin/vsftpd_init.sh
+RUN chmod +x /usr/local/bin/vsftpd_init.sh
+
+#config file
+COPY conf/vsftpd.conf /etc/vsftpd/vsftpd.conf
+
+#create FTP user home directory
+RUN mkdir -p /home/ftpuser
+
+#expose ports
+#21: Command port
+#21000-21010: Passive mode data ports
+#EXPOSE 21 21000-21010
+
+ENTRYPOINT ["/usr/local/bin/vsftpd_init.sh"]
+# CMD ["/usr/sbin/vsftpd", "/etc/vsftpd/vsftpd.conf"]
 ```
-ftp localhost 21
-# Username: ftpuser
-# Password: (from secrets/ftp_password)
+</details>
 
-# List files
-ls
+#### Script
+- FTP_USER in in the same group as www-data, so the directory is set to be writable by group.
 
-# Navigate to WordPress
-cd wordpress
+<details>
+<summary>🗟init script (vsftpd)</summary>
 
-# Download a file
-get wp-config.php
+```sh
+#!/bin/sh
+set -e
 
-# Upload a file
-put test.txt
+RED='\033[0;31m'
+GRE='\033[0;32m'
+MAG='\033[0;35m'
+CYA='\033[0;36m'
+RES='\033[0m'
 
-# Exit
-bye
+echo -e "${CYA}Running vsftpd_init.sh${RES}"
+
+# Read credentials from secrets
+FTP_USER="${FTP_USER}"
+FTP_PASSWORD="$(cat /run/secrets/ftp_pw)"
+
+# Create FTP user if doesn't exist
+if ! id "$FTP_USER" >/dev/null 2>&1; then
+	echo -e "${MAG}Creating FTP user: $FTP_USER${RES}"
+	adduser -D -G www-data -h /home/$FTP_USER -s /bin/sh "$FTP_USER"
+	echo "$FTP_USER:$FTP_PASSWORD" | chpasswd
+	echo -e "${GRE}FTP user created${RES}"
+else
+	echo -e "${GRE}FTP user already exists${RES}"
+fi
+
+# Add user to allowed list
+echo "$FTP_USER" > /etc/vsftpd/user_list
+
+# Set permissions
+#chown -R $FTP_USER:$FTP_USER /home/$FTP_USER
+chmod ug=rwx,o=rx /home/$FTP_USER
+
+echo -e "${GRE}FTP server setup complete!${RES}"
+
+# Start vsftpd
+exec /usr/sbin/vsftpd /etc/vsftpd/vsftpd.conf
+
+# exec "$@"
 ```
+</details>
 
+#### Confs
+
+<details>
+<summary>🗟Config (vsftpd)</summary>
 
 ```
-# Install lftp
-sudo apt install lftp  # Ubuntu/Debian
-sudo apk add lftp      # Alpine
+#run in foreground
+background=NO
 
-# Connect
-lftp -u ftpuser,your_password ftp://localhost:21
+#allow local users to login
+local_enable=YES
 
-# List files
-ls
+#enable write commands
+write_enable=YES
 
-# Mirror directory (download)
-mirror wordpress /local/path
+#chroot users to their home directory
+chroot_local_user=YES
+allow_writeable_chroot=YES
 
-# Upload directory
-mirror -R /local/path wordpress
+#passive mode configuration (?)
+pasv_enable=YES
+pasv_min_port=21000
+pasv_max_port=21010
+pasv_address=0.0.0.0
 
-# Exit
-exit
+#disable anonymous FTP
+anonymous_enable=NO
+
+#security settings
+seccomp_sandbox=NO
+ssl_enable=NO
+
+#logging
+xferlog_enable=YES
+xferlog_file=/var/log/vsftpd.log
+
+#user list
+userlist_enable=YES
+userlist_file=/etc/vsftpd/user_list
+userlist_deny=NO
+
+#local umask (?)
+local_umask=022
+
+#maximum data transfer rate (0 = unlimited)
+local_max_rate=0
 ```
+</details>
 
+#### Using ftp
+```
+#connect
+lftp -u ftpuser,password ftp://localhost:21
+
+#list files, change dirs
+ls, cd
+
+#download
+lftp> get /local/file.txt
+
+#upload
+lftp> put /local/file.txt
+```
 - or just use filezilla
-- make secure or not? maybe not.
+
 
 ## Evals
 - make aware:
 	- homepage has no links to static page __BEFORE__ bonus
 	- wp-admin plugins has no redis __BEFORE__ bonus
-	- empty location (desktop?) before downloading something via ftp
+	- empty location (desktop?) __BEFORE__ downloading something via ftp
 
 ## Terminology overload
 🐳 Docker & Containers
@@ -1253,4 +1797,5 @@ https://wiki.alpinelinux.org/wiki/WordPress
 https://hub.docker.com/_/wordpress
 [^19]: https://serverfault.com/a/936262
 [^20]: https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/
+https://pkgs.alpinelinux.org/packages
 
