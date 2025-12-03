@@ -66,6 +66,8 @@ bonus: all
 	$(DOCKER_COMPOSE) up -d --force-recreate --no-deps nginx
 #	vsftpd
 	$(DOCKER_COMPOSE) --profile bonus up -d --build vsftpd
+# 	portainer
+	$(DOCKER_COMPOSE) --profile bonus up -d --build portainer
 
 ##------------------------------------------------------------------##
 .PHONY: all build up ps logs down clean fclean re list bonus

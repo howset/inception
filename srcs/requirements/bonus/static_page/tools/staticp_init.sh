@@ -20,12 +20,14 @@ hoping_all_healthy()
 	sleep 5s
 }
 
-#copy the prepared static page to the volume
+#copy the prepared static page to the volume, perms & ownership like wp files
 copying_static()
 {
 	echo -e "${MAG}Deploying static page...${RES}"
 	mkdir -p /var/www/html/jumper
 	cp -r /tmp/jumper/. /var/www/html/jumper/
+	chown -R nobody:www-data /var/www/html/jumper
+	chmod -R ug=rwx,o=rx /var/www/html/jumper
 	echo -e "${GRE}Deploying static page...Done!${RES}"
 }
 

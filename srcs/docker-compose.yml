@@ -172,6 +172,26 @@ services:
       timeout: 5s
       retries: 3
 
+  portainer:
+    profiles: ["bonus"]
+    image: portainer:inc42
+    build:
+      context: ./requirements/bonus/portainer
+      dockerfile: Dockerfile
+    container_name: portainer_cont
+    ports:
+      - "9443:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - inc_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -tuln | grep :9443"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
 volumes:
   mdb_data:
     name: mdb_vol

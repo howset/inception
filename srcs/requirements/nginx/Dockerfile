@@ -15,8 +15,9 @@ RUN chmod +x /usr/local/bin/nginx_init.sh
 #nginx config, NOT overwrite
 COPY ./conf/nginx.cnf /etc/nginx/http.d/secure.conf
 
-#bonus for adminer
-COPY ./conf/adminer_bonus.cnf /temp/bonus.conf
+#bonus for adminer & portainer
+COPY ./conf/adminer_bonus.cnf /temp/adminer_bonus.conf
+COPY ./conf/portainer_bonus.cnf /temp/portainer_bonus.conf
 
 #expose port (none here, public exposure in docker-compose)
 #EXPOSE 80 443

@@ -73,13 +73,16 @@ setup_nginx_config()
 
 check_bonus_setup()
 {
-	echo -e "${MAG}Setting up adminer (bonus) config...${RES}"
 	if nc -zv adminer 8080 >/dev/null 2>&1; then
+		echo -e "${MAG}Setting up adminer (bonus) config...${RES}"
 		mkdir -p /etc/nginx/bonus.d
-		cp /temp/bonus.conf /etc/nginx/bonus.d/bonus.conf
+		cp /temp/adminer_bonus.conf /etc/nginx/bonus.d/adminer_bonus.conf
 		echo -e "${GRE}Setting up adminer (bonus) config...Done!${RES}"
-	else
-		echo -e "${YEL}No bonus${RES}"
+	fi
+	if nc -zv portainer 9443 >/dev/null 2>&1; then
+		echo -e "${MAG}Setting up portainer (bonus) config...${RES}"
+		cp /temp/portainer_bonus.conf /etc/nginx/bonus.d/portainer_bonus.conf
+		echo -e "${GRE}Setting up portainer (bonus) config...Done!${RES}"
 	fi
 }
 
