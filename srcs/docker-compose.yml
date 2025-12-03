@@ -94,7 +94,7 @@ services:
     profiles: ["bonus"]
     image: staticpage:inc42
     build:
-      context: bonus/static_page
+      context: requirements/bonus/static_page
       dockerfile: Dockerfile
     container_name: staticp_cont
     volumes:
@@ -107,7 +107,7 @@ services:
     profiles: ["bonus"]
     image: redis:inc42
     build:
-      context: bonus/redis
+      context: requirements/bonus/redis
       dockerfile: Dockerfile
     container_name: redis_cont
     volumes:
@@ -129,7 +129,7 @@ services:
     profiles: ["bonus"]
     image: adminer:inc42
     build:
-      context: bonus/adminer
+      context: requirements/bonus/adminer
       dockerfile: Dockerfile
     container_name: adminer_cont
     networks:
@@ -148,7 +148,7 @@ services:
     profiles: ["bonus"]
     image: vsftpd:inc42
     build:
-      context: bonus/vsftpd
+      context: requirements/bonus/vsftpd
       dockerfile: Dockerfile
     container_name: vsftpd_cont
     ports:

@@ -75,7 +75,8 @@ check_bonus_setup()
 {
 	echo -e "${MAG}Setting up adminer (bonus) config...${RES}"
 	if nc -zv adminer 8080 >/dev/null 2>&1; then
-		cp /temp/bonus.conf /etc/nginx/http.d/bonus.conf
+		mkdir -p /etc/nginx/bonus.d
+		cp /temp/bonus.conf /etc/nginx/bonus.d/bonus.conf
 		echo -e "${GRE}Setting up adminer (bonus) config...Done!${RES}"
 	else
 		echo -e "${YEL}No bonus${RES}"

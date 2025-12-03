@@ -57,7 +57,7 @@ list:
 bonus: all
 #	static page
 	$(DOCKER_COMPOSE) --profile bonus up -d --build staticpage
-	./srcs/bonus/static_page/tools/link_setup.sh
+	./srcs/requirements/bonus/static_page/tools/link_setup.sh
 #	redis
 	$(DOCKER_COMPOSE) --profile bonus up -d --build redis
 	$(DOCKER_COMPOSE) up -d --force-recreate --no-deps wordpress

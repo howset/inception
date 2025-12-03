@@ -17,10 +17,15 @@ server {
 	root	/var/www/html;
 	index	index.html index.php;
 
-	#match every possible request (/) & check if file exists, if not then index at a directory, if still not found then 404
+	#try to serve exact file, if not found try as directory, if still not found then 404
 	location / {
-		try_files	$uri $uri/ /index.php?$args;
+		try_files $uri $uri/ =404;
 	}
+
+	#try to serve exact file, if not found try as directory, if still not found fallback to /index.php?$args
+#	location / {
+#		try_files	$uri $uri/ /index.php?$args;
+#	}
 
 	# Directive for every request that finishes with .php
 	location ~ \.php$ {
@@ -34,6 +39,9 @@ server {
 		include			fastcgi_params;
 		fastcgi_param	SCRIPT_FILENAME $document_root$fastcgi_script_name;
 	}
+
+	# Include bonus service locations if they exist
+	include /etc/nginx/bonus.d/*.conf;
 }
 
 #redirect https://localhost to https://${DOMAIN_NAME}
@@ -49,7 +57,7 @@ server {
 	ssl_protocols				TLSv1.3;
 
 	# Redirect all requests to domain
-	return 301 https://${DOMAIN_NAME}$request_uri;
+	return 301 https://server_name$request_uri;
 }
 
 #redirect http://localhost to https://${DOMAIN_NAME} (because alpine opens 80 as default in /etc/nginx/http.d/default.conf)
