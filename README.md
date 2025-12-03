@@ -288,6 +288,7 @@ Reqs:
 - `sudo ncdu /` use sudo to also check dirs that would otherwise be hidden.
 - `free -h` check free memory
 - `ps aux` check PID
+- `curl -L` follow redirects
 
 ## Docker containers
 - The base image can basically be from anything, either from debian:bookworm or alpine:3.21.1 as long as the kernel is the same (linux), the difference is the size of the image using alpine ended up smaller than debian (~200 MB vs ~500 MB), and some adjustments also has to be made due to some differences between the systems (e.g. alpine has no bash by default).
