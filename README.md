@@ -322,6 +322,11 @@ Reqs:
 | docker top 		| 			| [ID]/[Name]		| first process listed is PID 1|
 | docker save 		| -o		| 					| save an image as .tar|
 | docker load 		| -i		| [Name]			| load a .tar image|
+| docker system		| info		| 					| system wide info|
+| docker system		| df		| 					| docker disk usage|
+| docker inspect	| 			| [ID]/[Name]		| inspect an image/a container|
+| docker builder	| prune -f	| 					| remove cache|
+
 </details>
 
 ### Mariadb
@@ -698,7 +703,7 @@ exec nginx -g "daemon off;"
 #### Configs[^16]
 - The default config file[^13][^14].
 - The config file `nginx.cnf` is __not__ copied to the docker container (overwrite) in `/etc/nginx/nginx.conf` because that is the parent one, and in the last line _virtual hosts configs includes_ points to `/etc/nginx/http.d/*.conf`.
-- The adminer config file is put in a different directory that will be inspected by the include line in the secure.conf (nginx conf file).
+- The adminer/portainer config file is put in a different directory that will be inspected by the include line in the secure.conf (nginx conf file).
 
 <details>
 <summary>🗟configs (nginx)</summary>
@@ -1857,6 +1862,8 @@ start_portainer
 - then go to get started
 
 ## Evals
+- comments on the blog post
+- edits on the sample page
 - make aware:
 	- homepage has no links to static page __BEFORE__ bonus
 	- wp-admin plugins has no redis __BEFORE__ bonus
