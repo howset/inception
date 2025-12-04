@@ -30,9 +30,12 @@ start_mdb_bg()
 #reproduce mysql_secure_installation noninteractively
 apply_msi()
 {
+	local DB_ROOT_PW=$(cat /run/secrets/db_root_pw)
 	echo -e "${MAG}Applying mysql_secure_installation manually${RES}"
+	mariadb -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$DB_ROOT_PW';" #root: set root password
+	mariadb -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" #root: allow only localhost/root access
+	#mariadb -e "DELETE FROM mysql.user WHERE User='root';" #root: remove root entirely
 	mariadb -e "DELETE FROM mysql.user WHERE User='';" #remove anon users
-	mariadb -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" #allow only localhost/root access
 	mariadb -e "DROP DATABASE IF EXISTS test;" #remove default test db
 	mariadb -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" #Remove privileges related to it
 	mariadb -e "FLUSH PRIVILEGES;" #apply immediately

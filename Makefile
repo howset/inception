@@ -14,14 +14,14 @@ DOCKER_COMPOSE := docker compose -f ./srcs/docker-compose.yml
 ##------------------------------------------------------------------##
 #Targets
 
-all: up
+all: build up
 
 #Build services
 build:
 	$(DOCKER_COMPOSE) build
 
 #Create (build) and start
-up: build
+up:
 	$(DOCKER_COMPOSE) up -d
 
 ps:
@@ -44,6 +44,7 @@ clean:
 #Full clean: remove containers, networks, volumes, and images
 fclean:
 	$(DOCKER_COMPOSE) --profile bonus down --rmi all -v --remove-orphans
+	docker builder prune -f
 
 re: fclean all
 

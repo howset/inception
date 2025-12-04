@@ -24,6 +24,8 @@ RUN apk update && apk add --no-cache\
 	php83-openssl \
 	php83-tokenizer \
 	php83-fileinfo \
+	php83-ctype \
+	php83-iconv \
 	openssl \
 	imagemagick \
 	icu-data-full \

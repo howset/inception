@@ -23,6 +23,7 @@ services:
       retries: 3
     secrets:
       - db_user_pw
+      - db_root_pw
 
   wordpress:
     image: wp:inc42
@@ -163,9 +164,6 @@ services:
     secrets:
       - ftp_pw
     restart: unless-stopped
-    depends_on:
-      wordpress:
-        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "netstat -tuln | grep :21"]
       interval: 10s
@@ -211,6 +209,8 @@ networks:
 secrets:
   db_user_pw:
     file: ${DB_USER_PW}
+  db_root_pw:
+    file: ${DB_ROOT_PW}
   wp_mad_pw:
     file: ${WP_MAD_PW}
   wp_user_pw:
