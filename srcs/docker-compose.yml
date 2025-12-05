@@ -194,12 +194,22 @@ volumes:
   mdb_data:
     name: mdb_vol
     driver: local
+    driver_opts:
+      device: /home/hsetyamu/data/mdb_data
   wp_data:
     name: wp_vol
     driver: local
+    driver_opts:
+      device: /home/hsetyamu/data/wp_data
   redis_data:
     name: redis_vol
     driver: local
+    driver_opts:
+      device: /home/hsetyamu/data/redis_data
+
+# sudo chown -R 999:999 /home/hsetyamu/data/mdb_data    # mysql user
+# sudo chown -R 82:82 /home/hsetyamu/data/wp_data       # www-data (Alpine)
+# sudo chown -R 999:999 /home/hsetyamu/data/redis_data  # redis user
 
 networks:
   inc_net:
