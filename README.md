@@ -14,22 +14,52 @@
 		- [Customize the DE](#customize-the-de)
 		- [Utilities: VSCode remote SSH, git, etc](#utilities-vscode-remote-ssh-git-etc)
 		- [To open the page](#to-open-the-page)
+	- [Useful checks](#useful-checks)
 - [Docker containers](#docker-containers)
 	- [Mariadb](#mariadb)
 		- [Dockerfile](#dockerfile)
 		- [Entrypoint script](#entrypoint-script)
 		- [Configs](#configs)
+		- [Exploring mdb](#exploring-mdb)
 	- [Nginx](#nginx)
 		- [Dockerfile](#dockerfile-1)
 		- [Entrypoint script](#entrypoint-script-1)
 		- [Configs](#configs-1)
+		- [Exploring nginx](#exploring-nginx)
 	- [Wordpress](#wordpress)
 		- [Dockerfile](#dockerfile-2)
 		- [Entrypoint script](#entrypoint-script-2)
 		- [Configs](#configs-2)
+		- [Exploring wp](#exploring-wp)
 	- [Docker Compose](#docker-compose)
 		- [Worth mentioning](#worth-mentioning)
 	- [Notes](#notes)
+- [Bonus](#bonus)
+	- [Static page](#static-page)
+		- [Dockerfile](#dockerfile-3)
+		- [Script](#script)
+		- [Confs](#confs)
+		- [Using static page](#using-static-page)
+	- [Redis cache](#redis-cache)
+		- [Dockerfile](#dockerfile-4)
+		- [Script](#script-1)
+		- [Confs](#confs-1)
+		- [Using Redis](#using-redis)
+	- [Adminer](#adminer)
+		- [Dockerfile](#dockerfile-5)
+		- [Script](#script-2)
+		- [Confs](#confs-2)
+		- [Using Adminer](#using-adminer)
+	- [FTP server](#ftp-server)
+		- [Dockerfile](#dockerfile-6)
+		- [Script](#script-3)
+		- [Confs](#confs-3)
+		- [Using ftp](#using-ftp)
+	- [Portainer](#portainer)
+		- [Dockerfile](#dockerfile-7)
+		- [Script](#script-4)
+		- [Confs](#confs-4)
+		- [Using portainer](#using-portainer)
 - [Evals](#evals)
 - [Terminology overload](#terminology-overload)
 - [References](#references)
@@ -1134,6 +1164,7 @@ services:
       retries: 3
     secrets:
       - db_user_pw
+      - db_root_pw
 
   wordpress:
     image: wp:inc42
@@ -1274,13 +1305,30 @@ services:
     secrets:
       - ftp_pw
     restart: unless-stopped
-    depends_on:
-      wordpress:
-        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "netstat -tuln | grep :21"]
       interval: 10s
       timeout: 5s
+      retries: 3
+
+  portainer:
+    profiles: ["bonus"]
+    image: portainer:inc42
+    build:
+      context: requirements/bonus/portainer
+      dockerfile: Dockerfile
+    container_name: portainer_cont
+    ports:
+      - "9443:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - inc_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -tuln | grep :9443"]
+      interval: 30s
+      timeout: 3s
       retries: 3
 
 volumes:
@@ -1302,6 +1350,8 @@ networks:
 secrets:
   db_user_pw:
     file: ${DB_USER_PW}
+  db_root_pw:
+    file: ${DB_ROOT_PW}
   wp_mad_pw:
     file: ${WP_MAD_PW}
   wp_user_pw:
