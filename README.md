@@ -344,7 +344,7 @@ The basic ideass are as follows:
 Notes:
 - ~~The terminal line to start mdb `mariadb --user=mysql --datadir=/var/lib/mysql` is put as CMD in the dockerfile (`CMD ["mariadb", "--user=mysql", "--datadir=/var/lib/mysql"]`) to delegate startups to the dockerfile and leave the init script to focus more on setups. The `exec "$@"` in theinit script executes the CMD from the dockerfile and also allows flexibility to override CMD.~~ Back to plan A, just exec in init script.
 - The db has to have a root password because otherwise its insecure.
-- Persistence test requires checks to see if database has been established before, because if it has, then running the entrypoint script again would result in errors. 
+- Persistence test requires checks to see if database has been established before (in the script), because if it has, then running the entrypoint script again would result in errors. 
 
 #### Dockerfile
 - ~~Since the init script that is used as the entrypoint was made during testing (using bash as default in the shebang), so bash has to be installed along with mariadb server & client.~~ Just use sh/ash.
@@ -413,6 +413,8 @@ echo -e "${CYA}Running mdb_init.sh${RES}"
 
 DB_USER_PW=$(cat /run/secrets/db_user_pw)
 DB_ROOT_PW=$(cat /run/secrets/db_root_pw)
+MSI_FLAG="/var/lib/mysql/.msi_flag"
+SDB_FLAG="/var/lib/mysql/.sdb_flag"
 
 start_mdb_bg()
 {
@@ -431,44 +433,41 @@ start_mdb_bg()
 #reproduce mysql_secure_installation noninteractively
 apply_msi()
 {
-	echo -e "${MAG}Applying mysql_secure_installation manually${RES}"
-	mariadb -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$DB_ROOT_PW';" #root: set root password
-	mariadb -u root -p"$DB_ROOT_PW" -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" #root: allow only localhost/root access
-	#mariadb -e "DELETE FROM mysql.user WHERE User='root';" #root: remove root entirely
-	mariadb -u root -p"$DB_ROOT_PW" -e "DELETE FROM mysql.user WHERE User='';" #remove anon users
-	mariadb -u root -p"$DB_ROOT_PW" -e "DROP DATABASE IF EXISTS test;" #remove default test db
-	mariadb -u root -p"$DB_ROOT_PW" -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" #Remove privileges related to it
-	mariadb -u root -p"$DB_ROOT_PW" -e "FLUSH PRIVILEGES;" #apply immediately
-	echo -e "${GRE}Applying mysql_secure_installation manually...Done!${RES}"
+	if [ ! -f "$MSI_FLAG" ]; then
+		echo -e "${MAG}Applying mysql_secure_installation manually${RES}"
+		mariadb -e "ALTER USER 'root'@'localhost' IDENTIFIED VIA mysql_native_password USING PASSWORD('$DB_ROOT_PW');"
+		mariadb -u root -p"$DB_ROOT_PW" -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
+		mariadb -u root -p"$DB_ROOT_PW" -e "DELETE FROM mysql.user WHERE User='';"
+		mariadb -u root -p"$DB_ROOT_PW" -e "DROP DATABASE IF EXISTS test;"
+		mariadb -u root -p"$DB_ROOT_PW" -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
+		mariadb -u root -p"$DB_ROOT_PW" -e "FLUSH PRIVILEGES;"
+		echo -e "${GRE}Applying mysql_secure_installation manually...Done!${RES}"
+		touch "$MSI_FLAG"
+		chown mysql:mysql "$MSI_FLAG"
+	else 
+		echo -e "${YEL}Not applying mysql_secure_installation again${RES}"
+	fi
 }
 
 setup_db()
 {
-	echo -e "${MAG}Setting up the database${RES}"
-	mariadb -u root -p"$DB_ROOT_PW" -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};" #create db
-	mariadb -u root -p"$DB_ROOT_PW" -e "CREATE USER IF NOT EXISTS '${DB_USER_NAME}'@'%' IDENTIFIED BY '$DB_USER_PW';" #adds new user with password, allowing connection from any host ('%')
-	mariadb -u root -p"$DB_ROOT_PW" -e "GRANT ALL ON ${DB_NAME}.* TO '${DB_USER_NAME}'@'%';" #give full privilege to user
-	mariadb -u root -p"$DB_ROOT_PW" -e "FLUSH PRIVILEGES;"
-	echo -e "${GRE}Setting up the database...Done!${RES}"
+	if [ ! -f "$SDB_FLAG" ]; then
+		echo -e "${MAG}Setting up the database${RES}"
+		mariadb -u root -p"$DB_ROOT_PW" -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};" #create db
+		mariadb -u root -p"$DB_ROOT_PW" -e "CREATE USER IF NOT EXISTS '${DB_USER_NAME}'@'%' IDENTIFIED BY '$DB_USER_PW';" #adds new user with password, allowing connection from any host ('%')
+		mariadb -u root -p"$DB_ROOT_PW" -e "GRANT ALL ON ${DB_NAME}.* TO '${DB_USER_NAME}'@'%';" #give full privilege to user
+		mariadb -u root -p"$DB_ROOT_PW" -e "FLUSH PRIVILEGES;"
+		echo -e "${GRE}Setting up the database...Done!${RES}"
+		touch "$SDB_FLAG"
+		chown mysql:mysql "$SDB_FLAG"
+	else 
+		echo -e "${YEL}Not Setting up the database again${RES}"
+	fi
 }
 
 start_mdb_bg
-
-#check root password
-if ! mariadb -u root -p"$DB_ROOT_PW" -e "SELECT 1;" >/dev/null 2>&1; then
-	echo -e "${YEL}Root password not set, applying mysql_secure_installation...${RES}"
-	apply_msi
-else
-	echo -e "${YEL}Root password already set, skipping mysql_secure_installation${RES}"
-fi
-
-#check database
-if ! mariadb -u root -p"$DB_ROOT_PW" -e "USE ${DB_NAME};" >/dev/null 2>&1; then
-	echo -e "${YEL}Database ${DB_NAME} doesn't exist, creating...${RES}"
-	setup_db
-else
-	echo -e "${YEL}Database ${DB_NAME} already exists, skipping setup${RES}"
-fi
+apply_msi
+setup_db
 
 # stop temporary background server
 pkill -f mariadbd || true
@@ -479,6 +478,7 @@ echo -e "${GRE}MariaDB setup complete!${RES}"
 # Start MariaDB server in the foreground (PID 1)
 exec mariadbd --user=mysql --datadir=/var/lib/mysql --port=${DB_PORT}
 # exec "$@"
+
 ```
 </details>
 
@@ -723,7 +723,7 @@ exec nginx -g "daemon off;"
 #### Configs[^16]
 - The default config file[^13][^14].
 - The config file `nginx.cnf` is __not__ copied to the docker container (overwrite) in `/etc/nginx/nginx.conf` because that is the parent one, and in the last line _virtual hosts configs includes_ points to `/etc/nginx/http.d/*.conf`.
-- The adminer/portainer config file is put in a different directory that will be inspected by the include line in the secure.conf (nginx conf file).
+- ~~The adminer/portainer config file is put in a different directory that will be inspected by the include line in the secure.conf (nginx conf file).~~ now have their own block for each to have it's respective subdomain.
 
 <details>
 <summary>🗟configs (nginx)</summary>
@@ -1479,7 +1479,7 @@ echo -e "${GRE}New link is set up.${RES}"
 - no confs here
 
 #### Using static page
-- Just click on the link in the homepage or go to `https://localhost/jumper`
+- Just click on the link in the homepage or go to `https://localhost/jumper` --> this link is made by the script that is run at the end of the makefile
 
 ### Redis cache
 - redis is a caching server plugin for wordpress that is setup in its own container but the connection has to be established from the worpress side. 
