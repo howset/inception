@@ -753,7 +753,7 @@ exec nginx -g "daemon off;"
 #### Configs[^16]
 - The default config file[^13][^14].
 - The config file `nginx.cnf` is __not__ copied to the docker container (overwrite) in `/etc/nginx/nginx.conf` because that is the parent one, and in the last line _virtual hosts configs includes_ points to `/etc/nginx/http.d/*.conf`.
-- ~~The adminer/portainer config file is put in a different directory that will be inspected by the include line in the secure.conf (nginx conf file).~~ now have their own block for each to have it's respective subdomain.
+- ~~The adminer/portainer config file is put in a different directory that will be inspected by the include line in the secure.conf (nginx conf file).~~ now have their own block for each to have it's respective subdomain. --> this has to be accompanied by changes in /etc/hosts too.
 
 <details>
 <summary>🗟configs (nginx)</summary>
