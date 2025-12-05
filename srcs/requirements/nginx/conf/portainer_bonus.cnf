@@ -1,17 +1,44 @@
-location /portainer/ {
-	proxy_pass http://portainer:9000/;
-	proxy_http_version 1.1;
+#location /portainer/ {
+#	proxy_pass https://portainer:9443/;
+#	proxy_http_version 1.1;
+#
+#	# WebSocket support
+#	proxy_set_header Upgrade $http_upgrade;
+#	proxy_set_header Connection "upgrade";
+#
+#	# Basic headers
+#	proxy_set_header Host $host;
+#	proxy_set_header X-Real-IP $remote_addr;
+#	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#	proxy_set_header X-Forwarded-Proto $scheme;
+#
+#	# Disable buffering
+#	proxy_buffering off;
+#
+#	proxy_ssl_verify off;
+#	proxy_ssl_server_name on;
+#}
 
-	# WebSocket support
-	proxy_set_header Upgrade $http_upgrade;
-	proxy_set_header Connection "upgrade";
+server {
+	listen 443 ssl;
+	server_name portainer.localhost portainer.hsetyamu.42.fr;
 
-	# Basic headers
-	proxy_set_header Host $http_host;
-	proxy_set_header X-Real-IP $remote_addr;
-	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-	proxy_set_header X-Forwarded-Proto https;
+	ssl_certificate /etc/nginx/ssl/server.crt;
+	ssl_certificate_key /etc/nginx/ssl/server.key;
+	ssl_protocols TLSv1.2 TLSv1.3;
 
-	# Disable buffering
-	proxy_buffering off;
+	location / {
+		proxy_pass https://portainer:9443;
+		proxy_http_version 1.1;
+
+		proxy_set_header Upgrade $http_upgrade;
+		proxy_set_header Connection "upgrade";
+		proxy_set_header Host $host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;
+
+		proxy_buffering off;
+		proxy_ssl_verify off;
+	}
 }

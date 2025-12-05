@@ -34,6 +34,7 @@ start_portainer()
 		--data /data \
 		--bind :9000 \
 		--bind-https :9443 \
+		 --base-url /portainer \
 		--no-analytics \
 		--hide-label owner=inception
 }

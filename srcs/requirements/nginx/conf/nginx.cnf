@@ -41,7 +41,7 @@ server {
 	}
 
 	# Include bonus service locations if they exist
-	include /etc/nginx/bonus.d/*.conf;
+	#include /etc/nginx/bonus.d/*.conf;
 }
 
 #redirect https://localhost to https://${DOMAIN_NAME}

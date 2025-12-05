@@ -52,16 +52,7 @@ wp_config_create()
 			--dbname="${DB_NAME}" \
 			--dbuser="${DB_USER_NAME}" \
 			--dbpass="$DB_USER_PW" \
-			--dbhost="${DB_HOST}:${DB_PORT}" \
-			--extra-php <<PHP
-// Enable WordPress debugging
-if ( ! defined( 'WP_DEBUG' ) ) {
-	define( 'WP_DEBUG', true );
-	define( 'WP_DEBUG_LOG', true );
-	define( 'WP_DEBUG_DISPLAY', false );
-	@ini_set( 'display_errors', 0 );
-}
-PHP
+			--dbhost="${DB_HOST}:${DB_PORT}"
 		echo -e "${GRE}Creating wp-config.php...Done!${RES}"
 	else
 		echo -e "${YEL}wp-config.php already exists${RES}"

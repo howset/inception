@@ -174,7 +174,7 @@ services:
     profiles: ["bonus"]
     image: portainer:inc42
     build:
-      context: ./requirements/bonus/portainer
+      context: requirements/bonus/portainer
       dockerfile: Dockerfile
     container_name: portainer_cont
     ports:

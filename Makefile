@@ -9,7 +9,7 @@ CYA:=\033[0;36m
 RES:=\033[0m
 
 #Specify docker compose
-DOCKER_COMPOSE := docker compose -f ./srcs/docker-compose.yml
+DOCKER_COMPOSE := docker-compose -f ./srcs/docker-compose.yml
 
 ##------------------------------------------------------------------##
 #Targets
@@ -37,6 +37,18 @@ logs-bonus:
 down:
 	$(DOCKER_COMPOSE) down
 
+#stop containers without removing
+stop:
+	$(DOCKER_COMPOSE) stop
+
+#start stopped containers (without rebuilding)
+start:
+	$(DOCKER_COMPOSE) start
+
+#restart container
+restart:
+	$(DOCKER_COMPOSE) restart
+
 #Down and remove images
 clean: 
 	$(DOCKER_COMPOSE) --profile bonus down --rmi all --remove-orphans
@@ -58,17 +70,18 @@ list:
 bonus: all
 #	static page
 	$(DOCKER_COMPOSE) --profile bonus up -d --build staticpage
-	./srcs/requirements/bonus/static_page/tools/link_setup.sh
 #	redis
 	$(DOCKER_COMPOSE) --profile bonus up -d --build redis
-	$(DOCKER_COMPOSE) up -d --force-recreate --no-deps wordpress
 #	adminer
 	$(DOCKER_COMPOSE) --profile bonus up -d --build adminer
-	$(DOCKER_COMPOSE) up -d --force-recreate --no-deps nginx
 #	vsftpd
 	$(DOCKER_COMPOSE) --profile bonus up -d --build vsftpd
 # 	portainer
 	$(DOCKER_COMPOSE) --profile bonus up -d --build portainer
+# 	finishing up
+	$(DOCKER_COMPOSE) up -d --force-recreate --no-deps wordpress
+	$(DOCKER_COMPOSE) up -d --force-recreate --no-deps nginx
+	./srcs/requirements/bonus/static_page/tools/link_setup.sh
 
 ##------------------------------------------------------------------##
 .PHONY: all build up ps logs down clean fclean re list bonus

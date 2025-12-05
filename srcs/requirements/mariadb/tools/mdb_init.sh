@@ -13,6 +13,11 @@ set -e
 
 echo -e "${CYA}Running mdb_init.sh${RES}"
 
+DB_USER_PW=$(cat /run/secrets/db_user_pw)
+DB_ROOT_PW=$(cat /run/secrets/db_root_pw)
+MSI_FLAG="/var/lib/mysql/.msi_flag"
+SDB_FLAG="/var/lib/mysql/.sdb_flag"
+
 start_mdb_bg()
 {
 	echo -e "${MAG}Installing/running mdb daemon${RES}"
@@ -30,27 +35,36 @@ start_mdb_bg()
 #reproduce mysql_secure_installation noninteractively
 apply_msi()
 {
-	local DB_ROOT_PW=$(cat /run/secrets/db_root_pw)
-	echo -e "${MAG}Applying mysql_secure_installation manually${RES}"
-	mariadb -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$DB_ROOT_PW';" #root: set root password
-	mariadb -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" #root: allow only localhost/root access
-	#mariadb -e "DELETE FROM mysql.user WHERE User='root';" #root: remove root entirely
-	mariadb -e "DELETE FROM mysql.user WHERE User='';" #remove anon users
-	mariadb -e "DROP DATABASE IF EXISTS test;" #remove default test db
-	mariadb -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" #Remove privileges related to it
-	mariadb -e "FLUSH PRIVILEGES;" #apply immediately
-	echo -e "${GRE}Applying mysql_secure_installation manually...Done!${RES}"
+	if [ ! -f "$MSI_FLAG" ]; then
+		echo -e "${MAG}Applying mysql_secure_installation manually${RES}"
+		mariadb -e "ALTER USER 'root'@'localhost' IDENTIFIED VIA mysql_native_password USING PASSWORD('$DB_ROOT_PW');"
+		mariadb -u root -p"$DB_ROOT_PW" -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
+		mariadb -u root -p"$DB_ROOT_PW" -e "DELETE FROM mysql.user WHERE User='';"
+		mariadb -u root -p"$DB_ROOT_PW" -e "DROP DATABASE IF EXISTS test;"
+		mariadb -u root -p"$DB_ROOT_PW" -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
+		mariadb -u root -p"$DB_ROOT_PW" -e "FLUSH PRIVILEGES;"
+		echo -e "${GRE}Applying mysql_secure_installation manually...Done!${RES}"
+		touch "$MSI_FLAG"
+		chown mysql:mysql "$MSI_FLAG"
+	else 
+		echo -e "${YEL}Not applying mysql_secure_installation again${RES}"
+	fi
 }
 
 setup_db()
 {
-	local DB_USER_PW=$(cat /run/secrets/db_user_pw)
-	echo -e "${MAG}Setting up the database${RES}"
-	mariadb -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};" #create db
-	mariadb -e "CREATE USER IF NOT EXISTS '${DB_USER_NAME}'@'%' IDENTIFIED BY '$DB_USER_PW';" #adds new user with password, allowing connection from any host ('%')
-	mariadb -e "GRANT ALL ON ${DB_NAME}.* TO '${DB_USER_NAME}'@'%';" #give full privilege to user
-	mariadb -e "FLUSH PRIVILEGES;"
-	echo -e "${GRE}Setting up the database...Done!${RES}"
+	if [ ! -f "$SDB_FLAG" ]; then
+		echo -e "${MAG}Setting up the database${RES}"
+		mariadb -u root -p"$DB_ROOT_PW" -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};" #create db
+		mariadb -u root -p"$DB_ROOT_PW" -e "CREATE USER IF NOT EXISTS '${DB_USER_NAME}'@'%' IDENTIFIED BY '$DB_USER_PW';" #adds new user with password, allowing connection from any host ('%')
+		mariadb -u root -p"$DB_ROOT_PW" -e "GRANT ALL ON ${DB_NAME}.* TO '${DB_USER_NAME}'@'%';" #give full privilege to user
+		mariadb -u root -p"$DB_ROOT_PW" -e "FLUSH PRIVILEGES;"
+		echo -e "${GRE}Setting up the database...Done!${RES}"
+		touch "$SDB_FLAG"
+		chown mysql:mysql "$SDB_FLAG"
+	else 
+		echo -e "${YEL}Not Setting up the database again${RES}"
+	fi
 }
 
 start_mdb_bg
