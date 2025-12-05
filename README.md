@@ -343,6 +343,8 @@ The basic ideass are as follows:
 
 Notes:
 - ~~The terminal line to start mdb `mariadb --user=mysql --datadir=/var/lib/mysql` is put as CMD in the dockerfile (`CMD ["mariadb", "--user=mysql", "--datadir=/var/lib/mysql"]`) to delegate startups to the dockerfile and leave the init script to focus more on setups. The `exec "$@"` in theinit script executes the CMD from the dockerfile and also allows flexibility to override CMD.~~ Back to plan A, just exec in init script.
+- The db has to have a root password because otherwise its insecure.
+- Persistence test requires checks to see if database has been established before, because if it has, then running the entrypoint script again would result in errors. 
 
 #### Dockerfile
 - ~~Since the init script that is used as the entrypoint was made during testing (using bash as default in the shebang), so bash has to be installed along with mariadb server & client.~~ Just use sh/ash.
@@ -409,6 +411,9 @@ set -e
 
 echo -e "${CYA}Running mdb_init.sh${RES}"
 
+DB_USER_PW=$(cat /run/secrets/db_user_pw)
+DB_ROOT_PW=$(cat /run/secrets/db_root_pw)
+
 start_mdb_bg()
 {
 	echo -e "${MAG}Installing/running mdb daemon${RES}"
@@ -427,28 +432,43 @@ start_mdb_bg()
 apply_msi()
 {
 	echo -e "${MAG}Applying mysql_secure_installation manually${RES}"
-	mariadb -e "DELETE FROM mysql.user WHERE User='';" #remove anon users
-	mariadb -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" #allow only localhost/root access
-	mariadb -e "DROP DATABASE IF EXISTS test;" #remove default test db
-	mariadb -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" #Remove privileges related to it
-	mariadb -e "FLUSH PRIVILEGES;" #apply immediately
+	mariadb -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$DB_ROOT_PW';" #root: set root password
+	mariadb -u root -p"$DB_ROOT_PW" -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" #root: allow only localhost/root access
+	#mariadb -e "DELETE FROM mysql.user WHERE User='root';" #root: remove root entirely
+	mariadb -u root -p"$DB_ROOT_PW" -e "DELETE FROM mysql.user WHERE User='';" #remove anon users
+	mariadb -u root -p"$DB_ROOT_PW" -e "DROP DATABASE IF EXISTS test;" #remove default test db
+	mariadb -u root -p"$DB_ROOT_PW" -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" #Remove privileges related to it
+	mariadb -u root -p"$DB_ROOT_PW" -e "FLUSH PRIVILEGES;" #apply immediately
 	echo -e "${GRE}Applying mysql_secure_installation manually...Done!${RES}"
 }
 
 setup_db()
 {
-	local DB_USER_PW=$(cat /run/secrets/db_user_pw)
 	echo -e "${MAG}Setting up the database${RES}"
-	mariadb -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};" #create db
-	mariadb -e "CREATE USER IF NOT EXISTS '${DB_USER_NAME}'@'%' IDENTIFIED BY '$DB_USER_PW';" #adds new user with password, allowing connection from any host ('%')
-	mariadb -e "GRANT ALL ON ${DB_NAME}.* TO '${DB_USER_NAME}'@'%';" #give full privilege to user
-	mariadb -e "FLUSH PRIVILEGES;"
+	mariadb -u root -p"$DB_ROOT_PW" -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};" #create db
+	mariadb -u root -p"$DB_ROOT_PW" -e "CREATE USER IF NOT EXISTS '${DB_USER_NAME}'@'%' IDENTIFIED BY '$DB_USER_PW';" #adds new user with password, allowing connection from any host ('%')
+	mariadb -u root -p"$DB_ROOT_PW" -e "GRANT ALL ON ${DB_NAME}.* TO '${DB_USER_NAME}'@'%';" #give full privilege to user
+	mariadb -u root -p"$DB_ROOT_PW" -e "FLUSH PRIVILEGES;"
 	echo -e "${GRE}Setting up the database...Done!${RES}"
 }
 
 start_mdb_bg
-apply_msi
-setup_db
+
+#check root password
+if ! mariadb -u root -p"$DB_ROOT_PW" -e "SELECT 1;" >/dev/null 2>&1; then
+	echo -e "${YEL}Root password not set, applying mysql_secure_installation...${RES}"
+	apply_msi
+else
+	echo -e "${YEL}Root password already set, skipping mysql_secure_installation${RES}"
+fi
+
+#check database
+if ! mariadb -u root -p"$DB_ROOT_PW" -e "USE ${DB_NAME};" >/dev/null 2>&1; then
+	echo -e "${YEL}Database ${DB_NAME} doesn't exist, creating...${RES}"
+	setup_db
+else
+	echo -e "${YEL}Database ${DB_NAME} already exists, skipping setup${RES}"
+fi
 
 # stop temporary background server
 pkill -f mariadbd || true
@@ -490,7 +510,7 @@ bind-address = 0.0.0.0
 docker exec -it mdb_cont sh
 
 # Connect as root (password from secret)
-mysql -u root -p
+mariadb -u root -p
 # (paste root password if you set one; if none, just press Enter)
 
 # List databases
