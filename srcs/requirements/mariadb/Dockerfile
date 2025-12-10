@@ -1,5 +1,5 @@
 # Base image
-FROM alpine:3.21.1
+FROM alpine:3.22.2
 #FROM public.ecr.aws/docker/library/alpine:3.21.1
 
 #install mdb

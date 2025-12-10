@@ -194,12 +194,6 @@ volumes:
   # mdb_data:
   #   name: mdb_vol
   #   driver: local
-  # wp_data:
-  #   name: wp_vol
-  #   driver: local
-  # redis_data:
-  #   name: redis_vol
-  #   driver: local
   mdb_data:
     name: mdb_vol
     driver_opts:

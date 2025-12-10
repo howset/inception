@@ -553,8 +553,11 @@ USE ${DB_NAME};
 SHOW TABLES;
 
 # Inspect a table structure
-DESCRIBE wp_users;
+DESCRIBE wp_comments;
 DESCRIBE wp_options;
+
+# Check comments
+SELECT * FROM wp_comments;
 
 # Check stored site URL
 SELECT option_value FROM wp_options WHERE option_name='siteurl';
@@ -579,12 +582,6 @@ SELECT ID, post_title, post_date FROM wp_posts ORDER BY ID DESC LIMIT 3;
 
 # Exit mysql client
 EXIT;
-
-# From host: quick connectivity test
-docker exec mdb_cont mysql -u ${DB_USER_NAME} -p$(cat secrets/db_user_pw) -e "SHOW TABLES;" ${DB_NAME}
-
-# Show server variables (sample)
-docker exec mdb_cont mysql -e "SHOW VARIABLES LIKE 'port';"
 ```
 </details>
 

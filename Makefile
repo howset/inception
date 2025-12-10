@@ -18,6 +18,8 @@ all: build up
 
 #Build services
 build:
+	sudo mkdir -pv /home/hsetyamu/data/mdb_data/
+	sudo mkdir -pv /home/hsetyamu/data/wp_data/
 	$(DOCKER_COMPOSE) build
 
 #Create (build) and start
@@ -57,6 +59,7 @@ clean:
 fclean:
 	$(DOCKER_COMPOSE) --profile bonus down --rmi all -v --remove-orphans
 	docker builder prune -f
+	sudo rm -rf /home/hsetyamu/data/
 
 re: fclean all
 
@@ -71,6 +74,7 @@ bonus: all
 #	static page
 	$(DOCKER_COMPOSE) --profile bonus up -d --build staticpage
 #	redis
+	sudo mkdir -pv /home/hsetyamu/data/redis_data/
 	$(DOCKER_COMPOSE) --profile bonus up -d --build redis
 #	adminer
 	$(DOCKER_COMPOSE) --profile bonus up -d --build adminer
