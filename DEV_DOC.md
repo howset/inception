@@ -13,7 +13,7 @@ Cofiguration:
 - Other than the secret files that can be freely modified, some configurations (e.g. names, ports, etc) can also be set by editing the `srcs/.env` file.
 
 ## Building and launching
-- Build and start the whole project by `make bonus` or just `make all` to exclude the bonus. This runs `docker-compose build` then `docker-compose up -d` and also creates directories for the bind volumes as required.
+- Build and start the whole project by `make bonus` or just `make all` to exclude the bonus. This runs `docker-compose build` then `docker-compose up -d` and also creates directories for the bind mounts for the volumes as required.
 - Other utilities
 	```sh
 	#stop and remove containers (and network)
@@ -28,14 +28,14 @@ Cofiguration:
 	#remove images as well
 	$> make clean
 
-	#remove everything (incl. volumes & clean-up cache)
+	#remove everything (incl. bind mounts & clean-up cache)
 	$> make fclean
 	```
 - During launching, it may take sometime for the services to start especially for the essential mandatory parts. This is due to the healthchecks and dependencies as specified in the `srcs/docker-compose.yml` file. If this is not wished, the corresponding parts can be commented out though this may require some more troubleshooting should some errors arise.
 
 ## Management
 - `make list` gives an overview of the containers, images, volumes, and network involved in the project. More detailed investigation can be done by `docker inspect [object name]`.
-- `make logs` gives the logs of __all__ created containers. For individual containers, use `docker logs [container name]`.
+- `make logs` gives the logs of __all__ created containers. For individual containers, use `docker logs [container name]`. This functionality can and should be used extensively to debug any errors.
 - Other useful commands
 	```sh
 	#execute a command in a docker container
@@ -45,8 +45,8 @@ Cofiguration:
 	$> docker exec -it [container name] sh
 	```
 - All required secret files (not included in the repository, but can be manually created) can be found in the `srcs/.env` file and must be put in the `secrets/` directory (create it if necessary).
-- Location of the bind volumes are hardcoded in the `srcs/docker-compose.yml` file. This can be changed manually as well.
+- Location of the bind mounts for volumes are hardcoded in the `srcs/docker-compose.yml` file. This can be changed manually as well.
 
 ## Data storing and persistence
 - That brings us to the volume, the location of which has been mentioned.
-- The volume is not managed by docker but rather binds to a location in the (VM's) storage. Therefore, stopping and removing the conatiners (and images) wihtout touching the volume would maintain the persistence of the changes that was made. 
+- The volume is not managed by docker but rather bind mounts to a location in the (VM's) storage. Therefore, stopping and removing the conatiners (and images) wihtout touching the volume would maintain the persistence of the changes that was made. 

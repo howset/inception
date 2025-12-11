@@ -16,7 +16,7 @@ Additional Components (Bonus):
 - vsftpd -- Provides file transfer capabilities.
 - portainer -- Provides interface to browse docker images/containers.
 
-All services are isolated in its containers, communicate through internal docker network, adn persistence is achieved by binding volumes to a specified storage directory.
+All services are isolated in its containers, communicate through internal docker network, adn persistence is achieved by binding volumes to be mounted at a specified storage directory.
 
 ## Starting and stopping the project
 - Using the __Makefile__ at the project root, the mandatory can be built and run (create & start) by `make all`.
