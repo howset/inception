@@ -1,12 +1,52 @@
-• DEV_DOC.md — Developer documentation This file must describe how a devel-
-oper can:
-	◦ Set up the environment from scratch (prerequisites, configuration files, se-
-	crets).
-	◦ Build and launch the project using the Makefile and Docker Compose.
-	◦ Use relevant commands to manage the containers and volumes.
-	◦ Identify where the project data is stored and how it persists.
+# DEV_DOC.md
+This document is aimed to be a non-comprehensive description of seting up, building, launching, and managing docker-based infrastructure for this Inception project.
 
 ## Setting up the environment
-## Building and launching 
-## Relevant commands
+Requirements:
+- Linux virtual machine
+- Docker and docker-compose installed in the virtual machine
+- Git and make
+- Cloned content of the repository
+- Secret files that are not included in the content of the repository but can be manually created in a specific location (`secrets/[secret file]`).
+
+Cofiguration:
+- Other than the secret files that can be freely modified, some configurations (e.g. names, ports, etc) can also be set by editing the `srcs/.env` file.
+
+## Building and launching
+- Build and start the whole project by `make bonus` or just `make all` to exclude the bonus. This runs `docker-compose build` then `docker-compose up -d` and also creates directories for the bind volumes as required.
+- Other utilities
+	```sh
+	#stop and remove containers (and network)
+	$> make down
+
+	#stop running containers (without removing)
+	$> make stop
+
+	#start stopped containers
+	$> make start
+
+	#remove images as well
+	$> make clean
+
+	#remove everything (incl. volumes & clean-up cache)
+	$> make fclean
+	```
+- During launching, it may take sometime for the services to start especially for the essential mandatory parts. This is due to the healthchecks and dependencies as specified in the `srcs/docker-compose.yml` file. If this is not wished, the corresponding parts can be commented out though this may require some more troubleshooting should some errors arise.
+
+## Management
+- `make list` gives an overview of the containers, images, volumes, and network involved in the project. More detailed investigation can be done by `docker inspect [object name]`.
+- `make logs` gives the logs of __all__ created containers. For individual containers, use `docker logs [container name]`.
+- Other useful commands
+	```sh
+	#execute a command in a docker container
+	$> docker exec [container name] [command and arguments/options]
+
+	#access a container using sh (alpine has no bash)
+	$> docker exec -it [container name] sh
+	```
+- All required secret files (not included in the repository, but can be manually created) can be found in the `srcs/.env` file and must be put in the `secrets/` directory (create it if necessary).
+- Location of the bind volumes are hardcoded in the `srcs/docker-compose.yml` file. This can be changed manually as well.
+
 ## Data storing and persistence
+- That brings us to the volume, the location of which has been mentioned.
+- The volume is not managed by docker but rather binds to a location in the (VM's) storage. Therefore, stopping and removing the conatiners (and images) wihtout touching the volume would maintain the persistence of the changes that was made. 

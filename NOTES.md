@@ -1951,7 +1951,8 @@ start_portainer
 - __Reverse Proxy__ A server that receives requests and forwards them to another internal service (NGINX forwards PHP requests to PHP-FPM).
 - __TLS/SSL__ _Transport Layer Security/Secure Sockets Layer_. Encryption technology for HTTPS communication.
 - __Ports__ Channels used for network communication.
-- __Local IP__ Your machine’s internal IP, used for local DNS mapping.
+- __Local IP__ A machine’s internal IP, used for local DNS mapping.
+- __DNS__ _Domain Name System_ translates human-friendly names to machine-friendly IP addresses.
 
 🌐 NGINX / FastCGI / PHP
 - __NGINX__ A high-performance web server used as the only entry point in the project.
