@@ -27,9 +27,6 @@ up:
 # 	$(DOCKER_COMPOSE) up -d
 	$(DOCKER_COMPOSE) up -d --no-deps
 
-ps:
-	$(DOCKER_COMPOSE) ps
-
 logs:
 	$(DOCKER_COMPOSE) logs
 
@@ -58,7 +55,7 @@ clean:
 
 #Full clean: remove containers, networks, volumes, and images
 fclean:
-	$(DOCKER_COMPOSE) --profile bonus down --rmi all -v --remove-orphans
+	$(DOCKER_COMPOSE) --profile bonus down --rmi all --remove-orphans
 	docker builder prune -f
 	sudo rm -rf /home/hsetyamu/data/
 
@@ -94,4 +91,4 @@ bonus: all
 	./srcs/requirements/bonus/static_page/tools/link_setup.sh
 
 ##------------------------------------------------------------------##
-.PHONY: all build up ps logs down clean fclean re list bonus
+.PHONY: all build up logs down stop start restart clean fclean re list bonus
