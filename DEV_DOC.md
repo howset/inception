@@ -45,7 +45,7 @@ Cofiguration:
 	$> docker exec -it [container name] sh
 	```
 - All required secret files (not included in the repository, but can be manually created) can be found in the `srcs/.env` file and must be put in the `secrets/` directory (create it if necessary).
-- Location of the bind mounts for volumes are hardcoded in the `srcs/docker-compose.yml` file. This can be changed manually as well.
+- Location of the bind mounts for data are hardcoded in the `srcs/docker-compose.yml` file. This can be changed manually as well.
 
 ## Data storing and persistence
 - That brings us to the volume, the location of which has been mentioned.
