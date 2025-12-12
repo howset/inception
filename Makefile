@@ -70,6 +70,11 @@ list:
 	@echo -e "${RED}== Containers ==${RES}" && docker ps -a
 	@echo -e "${GRE}== Volumes ==${RES}" && docker volume ls
 	@echo -e "${YEL}== Networks ==${RES}" && docker network ls
+	@echo -e "${MAG}== Container PID 1 ==${RES}"
+	@docker ps --format "{{.Names}}" | while read container; do \
+		cmd=$$(docker exec $$container cat /proc/1/cmdline 2>/dev/null | tr '\0' ' ' || echo "N/A"); \
+		echo -e "$$container:\t$$cmd"; \
+	done
 
 bonus: all
 #	static page

@@ -115,9 +115,9 @@ services:
     - redis_data:/data
     networks:
       - inc_net
-    depends_on:
-      wordpress:
-        condition: service_healthy
+    # depends_on:
+    #   wordpress:
+    #     condition: service_healthy
     restart: unless-stopped
     healthcheck:
       # test: ["CMD", "redis-cli", "ping"]
