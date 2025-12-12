@@ -1,12 +1,13 @@
 _This project has been created as part of the 42 curriculum by hsetyamu_
 
 # README.md
-
 ## Description
 This is a containerization project to learn modern infrastructure concepts using docker and docker-compose.
 The goal is to build and deploy a modular and isolated system while maintaining the principles of service isolation, networking, automation, and persistence.
 
-The project creates and orchestrates several docker containers, namely nginx, wordpress, and mariadb, each running in its own containers, communicating only through docker networks, and persisting data with bind mounts. The setup is automated through the use of a Makefile and docker-compose, ensuring that the whole infrastructure can be built, started, and cleaned conveniently.
+The project creates and orchestrates several docker containers, namely nginx, wordpress, and mariadb, each running in its own containers, communicating only through docker networks, and persisting data with bind mounts. The setup is automated through the use of a makefile and docker-compose, ensuring that the whole infrastructure can be built, started, and cleaned conveniently.
+
+To ensure robustness, healthchecks and dependencies are applied. The aim is to make sure that services that relies on the well-being of other services starts after that service is healthy.
 
 ### Virtual Machines vs Docker
 The use of virtual machine provides many advantages in respect to guarantee control and compatibility as well as provide a safe sandbox environment.
@@ -29,7 +30,6 @@ Docker network provides security through isolation and allows multiple container
 Persisting data can be done in either ways. Docker volume stores data in a fixed location in the host. The management, set-up, and permissions are handled by docker. Bind mounts however allows the data storage to be defined explicitly anywhere in the host. There is really no obvious disadvantage of using docker volumes compared to bind mounts other than the fact that bind mounts provides more transparency.
 
 ## Instructions
-
 ### Requirements
 - __virtual machine__ Linux based
 - __docker__ and __docker-compose__
@@ -64,7 +64,6 @@ Persisting data can be done in either ways. Docker volume stores data in a fixed
 	$> echo "[whatever db admin password]" > secrets/wp_adm_pw
 	...
 	```
-
 4. __Configure hosts file (on VM):__
 	
 	Edit directly or add the domain to `/etc/hosts`:
@@ -88,7 +87,8 @@ $> make bonus
 This will:
 - Create necessary data directories
 - Build all Docker images from Dockerfiles
-- Start all containers (mandatory + bonus services)
+- Start corresponding containers (mandatory/bonus)
+- Perform healthchecks and start the next containers following the specified dependencies
 - Set up networks and volumes
 
 #### Inspections
@@ -145,20 +145,23 @@ $> docker exec [container name] [command and arguments/options]
 ```
 
 ### Troubleshooting
+__dependency errors__
+- Just comment out the dependencies line(s) in the docker-compose.yml file or `up` with the `--no-deps` flag
+- Adjust the healthchecks (change the command or timeouts/intervals)
 
-__Container won't start:__
+__container won't start:__
 - Check logs: `docker logs [container name]`
 - Verify secrets exist in `secrets/`
 
-__Cannot access services:__
+__cannot access services:__
 - Verify containers are running: `make list`
 - Ensure domain is in `/etc/hosts`
 
-__Permission denied errors:__
+__permission denied errors:__
 - Ensure user is in `docker` group: `sudo adduser [name] docker`
 - Reboot after adding to docker group
 
-__Database connection errors:__
+__database connection errors:__
 - Verify mariadb container is healthy: `make list` and/or `docker logs [mariadb container name]`
 - Check credentials in secrets and .env
 - Ensure wordpress can reach mariadb: `docker exec [wordpress container name] ping mariadb`

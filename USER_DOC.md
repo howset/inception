@@ -23,6 +23,7 @@ All services are isolated in its containers, communicate through internal docker
 - Stopping running containers can be done by `make stop`. If necessary, containers can be removed by `make down`. `make up` run them again. A shortcut to restart (`make down` then `make up`) is `make restart`.
 - Clean-up can be done by either `make clean` (does not remove data directories) or `make fclean` (removes the directory where data are stored).
 - Bonus can be built and run by `make bonus`.
+- Starting the containers may take some time due to the healthchecks performed and dependencies as specified in the `srcs/docker-compose.yml` file.
 
 ## Accessing the website & administration
 - Access through `http://localhost` or `https://localhost` that will redirect to `https://hsetyamu.42.fr` (obviously, after the services are up and running). 
@@ -47,3 +48,4 @@ All services are isolated in its containers, communicate through internal docker
 
 ## Notes
 - To reduce complications of having to include too many secret files, generating the self-signed SSL certificate for TLS is done by the nginx container everytime it is run, that means it will always be different. This is __not__ reflective of the reality, but a liberty taken to simplify the approach of the project.
+- Depending on the system (computers/vms) the healthcheck and dependencies may hinder some services to start. This can easily be changed by commenting out the dependencies lines __or__ change the command __or__ finetune the intervals/timeouts.

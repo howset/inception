@@ -11,6 +11,7 @@ Requirements:
 
 Cofiguration:
 - Other than the secret files that can be freely modified, some configurations (e.g. names, ports, etc) can also be set by editing the `srcs/.env` file.
+- Going directly to the docker-compose.yml file, many adjustments can be made. The commands used for healthchecks are chosen arbitrarily and in principle can be anything, as well as the time (intervals/timeouts/retries). 
 
 ## Building and launching
 - Build and start the whole project by `make bonus` or just `make all` to exclude the bonus. This runs `docker-compose build` then `docker-compose up -d` and also creates directories for the bind mounts for the volumes as required.
@@ -50,3 +51,6 @@ Cofiguration:
 ## Data storing and persistence
 - That brings us to the storage, the location of which has been mentioned.
 - The storage (volume) is not managed by docker but rather bind mounts to a location in the (VM's) storage. Therefore, stopping and removing the conatiners (and images) wihtout touching the volume would maintain the persistence of the changes that was made. 
+
+## Notes
+- The bonus adds links on the homepage to some of them to provide convenience, this is handled directly by the makefile. Without this, those services can still be accessible by writing the absolute path in the url bar of the browser.
