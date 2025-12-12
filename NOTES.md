@@ -1996,9 +1996,11 @@ start_portainer
 [^16]: https://nginx.org/en/docs/beginners_guide.html
 [^17]: https://make.wordpress.org/cli/handbook/guides/installing/
 [^18]: https://make.wordpress.org/cli/handbook/how-to/how-to-install/
-https://wiki.alpinelinux.org/wiki/WordPress
-https://hub.docker.com/_/wordpress
 [^19]: https://serverfault.com/a/936262
 [^20]: https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/
-https://pkgs.alpinelinux.org/packages
+
+### Other references
+- https://pkgs.alpinelinux.org/packages
+- https://wiki.alpinelinux.org/wiki/WordPress
+- https://hub.docker.com/_/wordpress
 
