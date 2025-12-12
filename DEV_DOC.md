@@ -48,5 +48,5 @@ Cofiguration:
 - Location of the bind mounts for data are hardcoded in the `srcs/docker-compose.yml` file. This can be changed manually as well.
 
 ## Data storing and persistence
-- That brings us to the volume, the location of which has been mentioned.
-- The volume is not managed by docker but rather bind mounts to a location in the (VM's) storage. Therefore, stopping and removing the conatiners (and images) wihtout touching the volume would maintain the persistence of the changes that was made. 
+- That brings us to the storage, the location of which has been mentioned.
+- The storage (volume) is not managed by docker but rather bind mounts to a location in the (VM's) storage. Therefore, stopping and removing the conatiners (and images) wihtout touching the volume would maintain the persistence of the changes that was made. 
