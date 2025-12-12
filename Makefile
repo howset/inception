@@ -24,7 +24,8 @@ build:
 
 #Create (build) and start
 up:
-	$(DOCKER_COMPOSE) up -d
+# 	$(DOCKER_COMPOSE) up -d
+	$(DOCKER_COMPOSE) up -d --no-deps
 
 ps:
 	$(DOCKER_COMPOSE) ps

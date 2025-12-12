@@ -76,8 +76,8 @@ services:
     networks:
       - inc_net
     depends_on:
-      wordpress:
-        condition: service_healthy
+      # wordpress:
+      #   condition: service_healthy
       mariadb:
         condition: service_healthy
     restart: unless-stopped
@@ -199,19 +199,19 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: /home/hsetyamu/data/mdb_data/
+      device: ${VOL_PATH}mdb_data/
   wp_data:
     name: wp_vol
     driver_opts:
       type: none
       o: bind
-      device: /home/hsetyamu/data/wp_data/
+      device: ${VOL_PATH}wp_data/
   redis_data:
     name: redis_vol
     driver_opts:
       type: none
       o: bind
-      device: /home/hsetyamu/data/redis_data/
+      device: ${VOL_PATH}redis_data/
 
 networks:
   inc_net:
