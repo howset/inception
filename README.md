@@ -7,7 +7,7 @@ The goal is to build and deploy a modular and isolated system while maintaining 
 
 The project creates and orchestrates several docker containers, namely nginx, wordpress, and mariadb, each running in its own containers, communicating only through docker networks, and persisting data with bind mounts. The setup is automated through the use of a makefile and docker-compose, ensuring that the whole infrastructure can be built, started, and cleaned conveniently.
 
-To ensure robustness, healthchecks and dependencies are applied. The aim is to make sure that services that relies on the well-being of other services starts after that service is healthy.
+To ensure robustness, healthchecks and dependencies are applied. The aim is to make sure that services that relies on the well-being of other services starts after that service is healthy. Though admittedly, this does not always work as intended. Sorry.
 
 ### Virtual Machines vs Docker
 The use of virtual machine provides many advantages in respect to guarantee control and compatibility as well as provide a safe sandbox environment.
@@ -21,7 +21,7 @@ Variable configurations (e.g. ports, names) for the project can be passed either
 
 Using environment variables is a convenient way to define configurations that can be accessed by docker-compose. However it is rather insecure due to the fact that this can be inspected in the metadata of an image/container. As such, sensitive variables/essential credentials (namely passwords) should be guarded in a different manner. Secret files, when properly managed, avoid this pitfall. And whenever necessary, additional steps can be taken to further secure the information contained in the secret files.
 
-What should be considered as sensitive or not can be different in different context.
+What could/should be considered as sensitive or not can be different in different context.
 
 ### Docker Network vs Host Network
 Docker network provides security through isolation and allows multiple containers to use the same ports without conflicts (through port mapping), and enable connections using container names. Host networking offers better performance and simpler configuration but exposes containers directly to the host's network, which can be a security concern in production environments.
@@ -70,7 +70,7 @@ Persisting data can be done in either ways. Docker volume stores data in a fixed
 	```sh
 	$> sudo echo "127.0.0.1	[name].42.fr" >> /etc/hosts
 	$> sudo echo "127.0.0.1	adminer.localhost adminer.[name].42.fr" >> /etc/hosts #bonus
-	$> sudo echo "127.0.0.1	portainer.portainer adminer.[name].42.fr" >> /etc/hosts #bonus
+	$> sudo echo "127.0.0.1	portainer.localhost portainer.[name].42.fr" >> /etc/hosts #bonus
 	```
 5. __Other configurations__
 
@@ -147,7 +147,7 @@ $> docker exec [container name] [command and arguments/options]
 ```
 
 ### Troubleshooting
-__dependency errors__
+__dependency errors/healthchecks__
 - Just comment out the dependencies line(s) in the docker-compose.yml file or `up` with the `--no-deps` flag
 - Adjust the healthchecks (change the command or timeouts/intervals)
 

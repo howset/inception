@@ -54,3 +54,4 @@ Cofiguration:
 
 ## Notes
 - The bonus adds links on the homepage to some of them to provide convenience, this is handled directly by the makefile. Without this, those services can still be accessible by writing the absolute path in the url bar of the browser.
+- `make list` command: Container PID 1 does not update immedaitely after launch. Give it 5-10 seconds time.
