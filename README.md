@@ -179,6 +179,7 @@ __database connection errors:__
 	- https://hub.docker.com/_/nginx
 	- https://hub.docker.com/_/mariadb
 	- https://hub.docker.com/_/wordpress
+	- https://docs.docker.com/reference/dockerfile/
 	- https://make.wordpress.org/cli/handbook/how-to/how-to-install/
 
 - To keep the spirit of clarity, the use of large language models in this project is quite extensive. The challenge posed by having to make components that the project's author have zero knowledge about to work together as a functioning infrastructure is the main reason for this.
