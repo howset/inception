@@ -24,8 +24,8 @@ build:
 
 #Create (build) and start
 up:
-# 	$(DOCKER_COMPOSE) up -d
-	$(DOCKER_COMPOSE) up -d --no-deps
+	$(DOCKER_COMPOSE) up -d
+# 	$(DOCKER_COMPOSE) up -d --no-deps
 
 logs:
 	$(DOCKER_COMPOSE) logs
@@ -55,7 +55,7 @@ clean:
 
 #Full clean: remove containers, networks, volumes, and images
 fclean:
-	$(DOCKER_COMPOSE) --profile bonus down --rmi all --remove-orphans
+	$(DOCKER_COMPOSE) --profile bonus down --rmi all -v --remove-orphans
 	docker builder prune -f
 	sudo rm -rf /home/hsetyamu/data/
 

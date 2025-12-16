@@ -76,8 +76,8 @@ services:
     networks:
       - inc_net
     depends_on:
-      # wordpress:
-      #   condition: service_healthy
+      wordpress:
+        condition: service_healthy
       mariadb:
         condition: service_healthy
     restart: unless-stopped
