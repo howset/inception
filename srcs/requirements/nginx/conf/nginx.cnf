@@ -60,7 +60,7 @@ server {
 	return 301 https://${DOMAIN_NAME}$request_uri;
 }
 
-#redirect http://localhost to https://${DOMAIN_NAME} (because alpine opens 80 as default in /etc/nginx/http.d/default.conf)
+#redirect http://localhost to https://${DOMAIN_NAME} (just remove if unwanted)
 server {
 	listen 80;
 	listen [::]:80;
