@@ -1,4 +1,4 @@
-_This project has been created as part of the 42 curriculum by hsetyamu_
+_Declaration in italics_
 
 # README.md
 ## Description
