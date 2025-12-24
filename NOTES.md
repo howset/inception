@@ -86,6 +86,7 @@ Reqs:
 	- Penultimate stable in https://alpinelinux.org/releases/.
 	- Go to https://alpinelinux.org/downloads/, find `older releases` @ the bottom of the page.
 	- Find the proper version, go to releases (not main), look for -virt & x86_64 for cluster comps (-virt is lts kernel, configured for VM guests[^3])
+3. Or just save all the trouble and just use other distro that are more popular &/ familiar, like ubuntu.
 
 ### Preparation
 - Maybe dependent on virtualbox version.
@@ -325,6 +326,7 @@ Reqs:
 
 ## Docker containers
 - The base image can basically be from anything, either from debian:bookworm or alpine:3.21.1 as long as the kernel is the same (linux), the difference is the size of the image using alpine ended up smaller than debian (~200 MB vs ~500 MB), and some adjustments also has to be made due to some differences between the systems (e.g. alpine has no bash by default).
+- Advice: for this project, just use debian. Use alpine for real deployment.
 - __EXPOSE__ in dockerfiles means nothing other than metadata for documentation. Since this project doesnt really say anything about the port to be used for connections between the containers (other than in the diagram, which uses the default ports for the services i.e. mariadb 3306 and php-fpm 9000), using the defaults would work just fine, namely not defining anything in the dockerfile (See Docker Compose below).
 - Useful but can be confusing commands:[^6]
 <details>
