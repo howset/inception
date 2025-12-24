@@ -1,5 +1,8 @@
 # Inception
 
+## Notice
+After undergoing some experiments and last minute changes, the content of this note seems to be quite out-of-date now, but in general still maintains the spirit of the project. Differences may exist between the codes that are displayed here and the codes in the files.
+
 ## Content
 - [Starting points](#starting-points)
 - [VM setup & OS installation](#vm-setup--os-installation)
